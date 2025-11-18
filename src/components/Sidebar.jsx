@@ -23,7 +23,8 @@ function Sidebar() {
 
   const navItems = [
     { path: '/', label: 'Dashboard' },
-    { path: '/trading', label: 'Trading' },
+    { path: '/news', label: 'News' },
+    { path: '/trading', label: 'Charts' },
     { path: '/projection', label: 'Projection' },
     { path: '/api', label: 'API' },
     { path: '/settings', label: 'Settings' },

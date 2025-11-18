@@ -723,7 +723,7 @@ export const getMonitorChartData = async (id, type = 'response-time') => {
   return getMonitorResponseTimeChart(id);
 };
 
-// Get price chart data for Trading page
+// Get price chart data for Charts page
 export const getPriceChartData = async (symbol, interval = '1d') => {
   try {
     // Map intervals to Yahoo Finance format

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
 import Dashboard from './pages/Dashboard';
+import News from './pages/News';
 import Trading from './pages/Trading';
 import Projection from './pages/Projection';
 import API from './pages/API';
@@ -12,6 +13,7 @@ function App() {
       <Routes>
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Dashboard />} />
+          <Route path="news" element={<News />} />
           <Route path="trading" element={<Trading />} />
           <Route path="projection" element={<Projection />} />
           <Route path="api" element={<API />} />

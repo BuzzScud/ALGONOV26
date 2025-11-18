@@ -12,7 +12,7 @@ import {
 import { Line } from 'react-chartjs-2';
 import MonitorCard from '../components/MonitorCard';
 import AddMonitorModal from '../components/AddMonitorModal';
-import { getMonitors, createMonitor, updateMonitor, deleteMonitor, togglePauseMonitor } from '../services/monitorService';
+import { getMonitors, createMonitor, updateMonitor, deleteMonitor, togglePauseMonitor, fetchMarketData, getPriceChartData } from '../services/monitorService';
 
 ChartJS.register(
   CategoryScale,
@@ -48,6 +48,9 @@ function API() {
   const [totalRequests, setTotalRequests] = useState(0);
   const [successfulRequests, setSuccessfulRequests] = useState(0);
   const [switchingApi, setSwitchingApi] = useState(false);
+  const [dashboardStatus, setDashboardStatus] = useState('unknown');
+  const [chartsStatus, setChartsStatus] = useState('unknown');
+  const [projectionStatus, setProjectionStatus] = useState('unknown');
   const maxHistoryLength = 30;
 
   // Calculate API success rate
@@ -128,11 +131,42 @@ function API() {
     }
   };
 
+  // Check page API status
+  const checkPageStatus = async () => {
+    // Check Dashboard Page (uses fetchMarketData)
+    try {
+      const dashboardResult = await fetchMarketData('AAPL', '1d', '1d');
+      setDashboardStatus(dashboardResult && dashboardResult.data ? 'operational' : 'down');
+    } catch (error) {
+      console.error('Dashboard API check failed:', error);
+      setDashboardStatus('down');
+    }
+
+    // Check Charts Page (uses getPriceChartData)
+    try {
+      const chartsResult = await getPriceChartData('AAPL', '1D');
+      setChartsStatus(chartsResult && chartsResult.data && chartsResult.data.length > 0 ? 'operational' : 'down');
+    } catch (error) {
+      console.error('Charts API check failed:', error);
+      setChartsStatus('down');
+    }
+
+    // Check Projection Page (uses getPriceChartData)
+    try {
+      const projectionResult = await getPriceChartData('AAPL', '1D');
+      setProjectionStatus(projectionResult && projectionResult.data && projectionResult.data.length > 0 ? 'operational' : 'down');
+    } catch (error) {
+      console.error('Projection API check failed:', error);
+      setProjectionStatus('down');
+    }
+  };
+
   useEffect(() => {
     // Initialize success rate calculation
     calculateSuccessRate();
     
     loadMonitors();
+    checkPageStatus();
     
     // Get refresh interval from localStorage or use default 30 seconds
     const getRefreshInterval = () => {
@@ -148,6 +182,7 @@ function API() {
     const interval = setInterval(() => {
       loadMonitors();
       calculateSuccessRate();
+      checkPageStatus();
     }, refreshInterval * 1000);
     return () => clearInterval(interval);
   }, []);
@@ -363,12 +398,66 @@ function API() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {/* Dashboard Page Status */}
           <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Overall Status</p>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs text-gray-500 dark:text-gray-400">Dashboard Page</p>
+              <span className={`w-2 h-2 rounded-full ${
+                dashboardStatus === 'operational' ? 'bg-green-500 animate-pulse' : 
+                dashboardStatus === 'down' ? 'bg-red-500' : 
+                'bg-gray-400'
+              }`}></span>
+            </div>
             <p className={`text-lg font-semibold ${
-              apiConnected ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+              dashboardStatus === 'operational' ? 'text-green-600 dark:text-green-400' : 
+              dashboardStatus === 'down' ? 'text-red-600 dark:text-red-400' : 
+              'text-gray-600 dark:text-gray-400'
             }`}>
-              {apiConnected ? 'Operational' : 'Down'}
+              {dashboardStatus === 'operational' ? 'Operational' : 
+               dashboardStatus === 'down' ? 'Down' : 
+               'Checking...'}
+            </p>
+          </div>
+          
+          {/* Charts Page Status */}
+          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs text-gray-500 dark:text-gray-400">Charts Page</p>
+              <span className={`w-2 h-2 rounded-full ${
+                chartsStatus === 'operational' ? 'bg-green-500 animate-pulse' : 
+                chartsStatus === 'down' ? 'bg-red-500' : 
+                'bg-gray-400'
+              }`}></span>
+            </div>
+            <p className={`text-lg font-semibold ${
+              chartsStatus === 'operational' ? 'text-green-600 dark:text-green-400' : 
+              chartsStatus === 'down' ? 'text-red-600 dark:text-red-400' : 
+              'text-gray-600 dark:text-gray-400'
+            }`}>
+              {chartsStatus === 'operational' ? 'Operational' : 
+               chartsStatus === 'down' ? 'Down' : 
+               'Checking...'}
+            </p>
+          </div>
+          
+          {/* Projection Page Status */}
+          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs text-gray-500 dark:text-gray-400">Projection Page</p>
+              <span className={`w-2 h-2 rounded-full ${
+                projectionStatus === 'operational' ? 'bg-green-500 animate-pulse' : 
+                projectionStatus === 'down' ? 'bg-red-500' : 
+                'bg-gray-400'
+              }`}></span>
+            </div>
+            <p className={`text-lg font-semibold ${
+              projectionStatus === 'operational' ? 'text-green-600 dark:text-green-400' : 
+              projectionStatus === 'down' ? 'text-red-600 dark:text-red-400' : 
+              'text-gray-600 dark:text-gray-400'
+            }`}>
+              {projectionStatus === 'operational' ? 'Operational' : 
+               projectionStatus === 'down' ? 'Down' : 
+               'Checking...'}
             </p>
           </div>
           <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
@@ -397,7 +486,7 @@ function API() {
               Active: {activeApi === 'yahoo' ? 'Yahoo Finance' : activeApi === 'finnhub' ? 'Finnhub' : activeApi === 'massive' ? 'Massive' : 'None'}
             </p>
           </div>
-          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 md:col-span-2 lg:col-span-1">
+          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Success Rate (24h)</p>
             
             <div className="mb-3">
@@ -523,7 +612,10 @@ function API() {
           </div>
           <button
             type="button"
-            onClick={loadMonitors}
+            onClick={() => {
+              loadMonitors();
+              checkPageStatus();
+            }}
             disabled={loading}
             className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
           >

@@ -198,31 +198,82 @@ function WorldClock({ timezone, city, country }) {
 }
 
 // Stock Info Card Component
-function StockInfoCard({ symbol, data, loading }) {
+function StockInfoCard({ symbol, data, loading, onRemove }) {
   if (loading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{symbol}</h3>
-          <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-200 border-t-blue-600"></div>
+          <div className="flex items-center gap-2">
+            <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-200 border-t-blue-600"></div>
+            {onRemove && (
+              <button
+                type="button"
+                onClick={onRemove}
+                className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                title="Remove symbol"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
         <p className="text-gray-500 dark:text-gray-400 text-sm">Loading...</p>
       </div>
     );
   }
 
-  if (data.error || data.price === null) {
+  if (data?.error || data?.price === null) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{symbol}</h3>
-          <span className="text-xs px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 rounded">
-            Error
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 rounded">
+              Error
+            </span>
+            {onRemove && (
+              <button
+                type="button"
+                onClick={onRemove}
+                className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                title="Remove symbol"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
         <p className="text-gray-500 dark:text-gray-400 text-sm">
-          {data.error || 'Unable to fetch data'}
+          {data?.error || 'Unable to fetch data'}
         </p>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{symbol}</h3>
+          {onRemove && (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+              title="Remove symbol"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+        <p className="text-gray-500 dark:text-gray-400 text-sm">No data available</p>
       </div>
     );
   }
@@ -265,9 +316,23 @@ function StockInfoCard({ symbol, data, loading }) {
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-xl font-bold text-gray-900 dark:text-white">{symbol}</h3>
-        <span className={`text-xs px-2 py-1 rounded ${statusColor}`}>
-          {marketStatus}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`text-xs px-2 py-1 rounded ${statusColor}`}>
+            {marketStatus}
+          </span>
+          {onRemove && (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+              title="Remove symbol"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
       
       <div className="mb-4">
@@ -305,12 +370,40 @@ function StockInfoCard({ symbol, data, loading }) {
 }
 
 function Dashboard() {
-  const [qqqData, setQqqData] = useState(null);
-  const [spyData, setSpyData] = useState(null);
-  const [dxyData, setDxyData] = useState(null);
-  const [vixData, setVixData] = useState(null);
+  // Default symbols with their display names and API symbols
+  const defaultSymbols = [
+    { display: 'QQQ', api: 'QQQ' },
+    { display: 'SPY', api: 'SPY' },
+    { display: 'DXY', api: 'DX-Y.NYB' },
+    { display: 'VIX', api: '^VIX' },
+  ];
+
+  // Load symbols from localStorage or use defaults
+  const [symbols, setSymbols] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dashboardSymbols');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (error) {
+      console.error('Error loading symbols from localStorage:', error);
+    }
+    return defaultSymbols;
+  });
+
+  const [stockData, setStockData] = useState({});
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [newSymbolInput, setNewSymbolInput] = useState('');
+  const [addingSymbol, setAddingSymbol] = useState(false);
+
+  // Save symbols to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('dashboardSymbols', JSON.stringify(symbols));
+  }, [symbols]);
 
   const loadStockData = async () => {
     setLoading(true);
@@ -320,68 +413,57 @@ function Dashboard() {
         setTimeout(() => reject(new Error('Request timeout')), 15000)
       );
       
-      const dataPromise = Promise.all([
-        getStockPrice('QQQ'),
-        getStockPrice('SPY'),
-        getStockPrice('DX-Y.NYB'), // DXY (US Dollar Index)
-        getStockPrice('^VIX'), // VIX (Volatility Index)
+      const dataPromises = symbols.map(symbolConfig => 
+        getStockPrice(symbolConfig.api).then(data => ({
+          ...data,
+          displaySymbol: symbolConfig.display,
+        })).catch(error => ({
+          symbol: symbolConfig.display,
+          displaySymbol: symbolConfig.display,
+          price: null,
+          change: 0,
+          changePercent: 0,
+          previousClose: 0,
+          marketState: isMarketOpen() ? 'REGULAR' : 'CLOSED',
+          error: 'Failed to fetch data. Please try again.',
+        }))
+      );
+      
+      const results = await Promise.race([
+        Promise.all(dataPromises),
+        timeoutPromise
       ]);
       
-      const [qqq, spy, dxy, vix] = await Promise.race([dataPromise, timeoutPromise]);
+      // Convert results to object keyed by display symbol
+      const dataMap = {};
+      results.forEach((data, index) => {
+        const displaySymbol = symbols[index].display;
+        dataMap[displaySymbol] = {
+          ...data,
+          symbol: displaySymbol,
+        };
+      });
       
-      setQqqData(qqq);
-      setSpyData(spy);
-      // Update symbols for display
-      setDxyData({ ...dxy, symbol: 'DXY' });
-      setVixData({ ...vix, symbol: 'VIX' });
+      setStockData(dataMap);
       setLastUpdate(new Date());
     } catch (error) {
       console.error('Error loading stock data:', error);
       // Set error state for any missing data
-      if (!qqqData) {
-        setQqqData({
-          symbol: 'QQQ',
-          price: null,
-          change: 0,
-          changePercent: 0,
-          previousClose: 0,
-          marketState: isMarketOpen() ? 'REGULAR' : 'CLOSED',
-          error: 'Failed to fetch data. Please try again.',
-        });
-      }
-      if (!spyData) {
-        setSpyData({
-          symbol: 'SPY',
-          price: null,
-          change: 0,
-          changePercent: 0,
-          previousClose: 0,
-          marketState: isMarketOpen() ? 'REGULAR' : 'CLOSED',
-          error: 'Failed to fetch data. Please try again.',
-        });
-      }
-      if (!dxyData) {
-        setDxyData({
-          symbol: 'DXY',
-          price: null,
-          change: 0,
-          changePercent: 0,
-          previousClose: 0,
-          marketState: isMarketOpen() ? 'REGULAR' : 'CLOSED',
-          error: 'Failed to fetch data. Please try again.',
-        });
-      }
-      if (!vixData) {
-        setVixData({
-          symbol: 'VIX',
-          price: null,
-          change: 0,
-          changePercent: 0,
-          previousClose: 0,
-          marketState: isMarketOpen() ? 'REGULAR' : 'CLOSED',
-          error: 'Failed to fetch data. Please try again.',
-        });
-      }
+      const errorData = {};
+      symbols.forEach(symbolConfig => {
+        if (!stockData[symbolConfig.display]) {
+          errorData[symbolConfig.display] = {
+            symbol: symbolConfig.display,
+            price: null,
+            change: 0,
+            changePercent: 0,
+            previousClose: 0,
+            marketState: isMarketOpen() ? 'REGULAR' : 'CLOSED',
+            error: 'Failed to fetch data. Please try again.',
+          };
+        }
+      });
+      setStockData(prev => ({ ...prev, ...errorData }));
     } finally {
       setLoading(false);
     }
@@ -392,7 +474,72 @@ function Dashboard() {
     // Auto-refresh every 30 seconds
     const interval = setInterval(loadStockData, 30000);
     return () => clearInterval(interval);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbols.length]); // Reload when symbols count changes
+
+  const addSymbol = async () => {
+    const symbolToAdd = newSymbolInput.trim().toUpperCase();
+    if (!symbolToAdd) {
+      return;
+    }
+
+    // Check if symbol already exists
+    if (symbols.some(s => s.display === symbolToAdd || s.api === symbolToAdd)) {
+      alert('Symbol already exists');
+      setNewSymbolInput('');
+      return;
+    }
+
+    setAddingSymbol(true);
+    try {
+      // Test if symbol is valid by trying to fetch it
+      const testData = await getStockPrice(symbolToAdd);
+      if (testData.error || testData.price === null) {
+        alert(`Invalid symbol: ${symbolToAdd}. Please check the symbol and try again.`);
+        setAddingSymbol(false);
+        return;
+      }
+
+      // Add the symbol
+      const newSymbol = { display: symbolToAdd, api: symbolToAdd };
+      setSymbols([...symbols, newSymbol]);
+      setNewSymbolInput('');
+      
+      // Immediately fetch data for the new symbol
+      const newData = await getStockPrice(symbolToAdd);
+      setStockData(prev => ({
+        ...prev,
+        [symbolToAdd]: {
+          ...newData,
+          symbol: symbolToAdd,
+        },
+      }));
+    } catch (error) {
+      console.error('Error adding symbol:', error);
+      alert(`Failed to add symbol: ${symbolToAdd}. Please check the symbol and try again.`);
+    } finally {
+      setAddingSymbol(false);
+    }
+  };
+
+  const removeSymbol = (displaySymbol) => {
+    if (symbols.length <= 1) {
+      alert('You must have at least one symbol on the dashboard');
+      return;
+    }
+    setSymbols(symbols.filter(s => s.display !== displaySymbol));
+    setStockData(prev => {
+      const updated = { ...prev };
+      delete updated[displaySymbol];
+      return updated;
+    });
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !addingSymbol) {
+      addSymbol();
+    }
+  };
 
   return (
     <div className="w-full max-w-7xl mx-auto">
@@ -416,7 +563,7 @@ function Dashboard() {
       {/* Stock Prices Section */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Market Indices</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Market</h2>
           <div className="flex items-center gap-4">
             {lastUpdate && (
               <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -436,11 +583,52 @@ function Dashboard() {
             </button>
           </div>
         </div>
+        
+        {/* Add Symbol Input */}
+        <div className="mb-4 flex gap-2">
+          <input
+            type="text"
+            value={newSymbolInput}
+            onChange={(e) => setNewSymbolInput(e.target.value.toUpperCase())}
+            onKeyPress={handleKeyPress}
+            placeholder="Enter symbol (e.g., AAPL, TSLA, MSFT)"
+            disabled={addingSymbol}
+            className="flex-1 px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          />
+          <button
+            type="button"
+            onClick={addSymbol}
+            disabled={addingSymbol || !newSymbolInput.trim()}
+            className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {addingSymbol ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Adding...
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Symbol
+              </>
+            )}
+          </button>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StockInfoCard symbol="QQQ" data={qqqData} loading={loading && !qqqData} />
-          <StockInfoCard symbol="SPY" data={spyData} loading={loading && !spyData} />
-          <StockInfoCard symbol="DXY" data={dxyData} loading={loading && !dxyData} />
-          <StockInfoCard symbol="VIX" data={vixData} loading={loading && !vixData} />
+          {symbols.map((symbolConfig) => (
+            <StockInfoCard
+              key={symbolConfig.display}
+              symbol={symbolConfig.display}
+              data={stockData[symbolConfig.display] || null}
+              loading={loading && !stockData[symbolConfig.display]}
+              onRemove={symbols.length > 1 ? () => removeSymbol(symbolConfig.display) : null}
+            />
+          ))}
         </div>
       </div>
 
