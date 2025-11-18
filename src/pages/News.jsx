@@ -27,7 +27,8 @@ function News() {
     
     try {
       const result = await getNewsByCategory(category);
-      setNews(result.news || []);
+      const sortedNews = (result.news || []).sort((a, b) => (b.datetime || 0) - (a.datetime || 0));
+      setNews(sortedNews);
       setNewsSource(result.source);
       setNewsSources(result.sources || []);
       setLastRefresh(new Date());
@@ -52,7 +53,8 @@ function News() {
     
     try {
       const result = await searchNews(query.trim());
-      setNews(result.news || []);
+      const sortedNews = (result.news || []).sort((a, b) => (b.datetime || 0) - (a.datetime || 0));
+      setNews(sortedNews);
       setNewsSource(result.source);
       setNewsSources(result.sources || []);
       setLastRefresh(new Date());
