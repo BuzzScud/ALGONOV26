@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import News from './pages/News';
 import Trading from './pages/Trading';
 import Projection from './pages/Projection';
+import Data from './pages/Data';
 import API from './pages/API';
 import Settings from './pages/Settings';
 
@@ -16,6 +17,7 @@ function App() {
           <Route path="news" element={<News />} />
           <Route path="trading" element={<Trading />} />
           <Route path="projection" element={<Projection />} />
+          <Route path="data" element={<Data />} />
           <Route path="api" element={<API />} />
           <Route path="settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />

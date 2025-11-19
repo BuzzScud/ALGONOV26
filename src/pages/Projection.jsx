@@ -41,6 +41,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -55,6 +56,7 @@ import {
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { Line } from 'react-chartjs-2';
 import { getPriceChartData } from '../services/monitorService';
+import { saveProjection } from '../services/projectionService';
 
 ChartJS.register(
   CategoryScale,
@@ -160,13 +162,18 @@ function omegaAt(i, schedule) {
   return schedule; // single value
 }
 
-// θ(i, Ψ, λ, ω) - Theta step function
-function thetaStep(i, psi, lambda, omegaHz) {
+// θ(i, Ψ, λ, ω) - Theta step function (legacy, for computeCrystallineProjection)
+// This uses the complete formula: θ(n,k,λ,ω,ψ) = k·π·(1 + √5) + n·2π/12 + log3(ν(λ)) + ω/432 + p² - q²
+function thetaStep(i, psi, lambda, omegaHz, depthPrime = 31) {
+  const n = i;
   const k = i;
-  const { phase: omegaPhase } = omegaGate(omegaHz);
-  const nuVal = nuLambda(lambda);
-  // θ = k·π·(1 - Ψ) + ν·(π/180) + Ω_phase
-  return k * Math.PI * (1 - psi) + nuVal * (Math.PI / 180) + omegaPhase;
+  
+  // Pass depthPrime to calculateTheta so it can extract p and q
+  // If psi is already a number (depthPrime), pass it directly
+  const psiValue = typeof psi === 'number' ? psi : depthPrime;
+  
+  // Use the complete theta formula with depthPrime for p,q extraction
+  return calculateTheta(n, k, lambda, omegaHz, psiValue, depthPrime);
 }
 
 // g(i) - Recursive 3^θ growth step
@@ -218,8 +225,8 @@ function computeCrystallineProjection({
     const lambda = lambdaSchedule[i % lambdaSchedule.length];
     const wHz = omegaAt(i, omegaSchedule || omegaHz);
     
-    // Calculate theta for this step
-    const theta_i = thetaStep(i, psi, lambda, wHz);
+    // Calculate theta for this step using correct formula
+    const theta_i = thetaStep(i, psi, lambda, wHz, depthPrime);
     
     // Update growth recursively
     g = growthStep(g, theta_i, wHz, triad);
@@ -450,12 +457,22 @@ function calculateGamma(n, d, historicalPrices) {
   return Math.log2(Math.max(1, primeCount) / Math.max(1, entropy));
 }
 
-// ν(λ) - Phonetic Value with prime exponentiation tower depth 31
+// ν(λ) - Phonetic Value
+// Formula: ν(λ) = 3^λ mod 3
+// Also maps phonetic strings: ν(dub) = 3, ν(kubt) = 5, ν(k'anch) = 7
 function calculateNu(lambda) {
-  // Use prime tower depth 31: 3^(p1^(p2^p3)) where primes from PRIMES_500
-  const tetrated = tetration(3, TETRATION_DEPTH);
-  // Apply lambda as exponent to the tetrated result, then modulo 7
-  return Math.pow(tetrated, lambda) % 7;
+  // Handle phonetic strings
+  if (lambda === 'dub') return 3;
+  if (lambda === 'kubt') return 5;
+  if (lambda === "k'anch" || lambda === "k'anchay") return 7;
+  
+  // For numeric lambda: ν(λ) = 3^λ mod 3
+  if (typeof lambda === 'number') {
+    return Math.pow(3, lambda) % 3;
+  }
+  
+  // Default fallback
+  return 3;
 }
 
 // Γ(k) - Möbius Duality Twist
@@ -469,48 +486,90 @@ function calculateThetaN(n) {
   return n * Math.PI * 2 * goldenRatio;
 }
 
-// θ(n, k, λ) - Combined angle function
-function calculateTheta(n, k, lambda, omega, psi) {
-  // Simplified version: θ(n, k, λ) = kπ(1 - ...)
-  // Using golden ratio connection
-  const goldenRatio = (1 + Math.sqrt(5)) / 2;
-  return k * Math.PI * (1 - (lambda / (omega || 144000)) * goldenRatio);
+// θ(n, k, λ, ω, ψ) - Complete Theta Function
+// Formula: θ(n,k,λ,ω,ψ) = k·π·(1 + √5) + n·2π/12 + log3(ν(λ)) + ω/432 + p² - q²
+// Where p and q come from ψ (Plimpton triple)
+// psi can be: a number (depthPrime), an object {p, q}, or null (will use default depthPrime=31)
+function calculateTheta(n, k, lambda, omega, psi, depthPrime = 31) {
+  const goldenRatio = (1 + Math.sqrt(5)) / 2; // (1 + √5)
+  const PI = Math.PI;
+  
+  // k·π·(1 + √5)
+  const term1 = k * PI * goldenRatio;
+  
+  // n·2π/12
+  const term2 = n * 2 * PI / 12;
+  
+  // log3(ν(λ)) = log(ν(λ)) / log(3)
+  const nuLambda = calculateNu(lambda);
+  // Handle case where nuLambda might be 0 (would cause log(0) = -Infinity)
+  const nuValue = nuLambda > 0 ? nuLambda : 1;
+  const term3 = Math.log(nuValue) / Math.log(3);
+  
+  // ω/432 (omega in Hz, default 144000 if not provided, but formula uses ω/432)
+  const omegaValue = omega || 144000;
+  const term4 = omegaValue / 432;
+  
+  // p² - q² from Plimpton triple (psi)
+  // Extract p and q from psi or depth prime
+  let term5 = 0;
+  if (psi && typeof psi === 'object' && psi.p && psi.q) {
+    // If psi is an object with p and q
+    term5 = psi.p * psi.p - psi.q * psi.q;
+  } else if (typeof psi === 'number') {
+    // If psi is a depth prime number, extract p and q
+    const idx = PRIME_STOPS.indexOf(psi);
+    const p = psi;
+    const q = idx > 0 ? PRIME_STOPS[idx - 1] : 2;
+    term5 = p * p - q * q;
+  } else {
+    // Default: use depthPrime parameter or fallback to 31
+    const dp = depthPrime || 31;
+    const idx = PRIME_STOPS.indexOf(dp);
+    const p = dp;
+    const q = idx > 0 ? PRIME_STOPS[idx - 1] : 2;
+    term5 = p * p - q * q;
+  }
+  
+  return term1 + term2 + term3 + term4 + term5;
 }
 
-// Z_n^(d) - The main lattice formula with prime exponentiation tower depth 31
+// Z_n^(d) - The main lattice formula
+// Formula: Z_n^(d) = 3^((n-1)·2π/12/ln3) · cos((n-1)·2π/12 · Φ_d)
+// Exact formula from screenshots - no prime tower scaling
 function calculateZ(n, d) {
   if (d < 0 || d >= PHI_D.length) return 0;
   
   const phi_d = PHI_D[d];
-  const exponent = ((n - 1) * 2 * Math.PI / 12) / Math.log(3);
-  const cosineArg = (n - 1) * 2 * Math.PI / 12 * phi_d;
   
-  // Use prime tower depth 31: compute 3^(p1^(p2^p3)), then use its logarithm for scaling
-  const tetratedValue = tetration(3, TETRATION_DEPTH);
-  // Scale exponent by prime tower depth factor: log(tower) / log(3) / 31
-  const tetrationScale = Math.log(tetratedValue) / (Math.log(3) * TETRATION_DEPTH);
-  const scaledExponent = exponent * tetrationScale;
-  const baseValue = Math.pow(3, scaledExponent);
+  // Exponent: (n-1)·2π/12/ln3
+  const exponent = ((n - 1) * 2 * Math.PI / 12) / Math.log(3);
+  
+  // 3^exponent - direct calculation
+  const baseValue = Math.pow(3, exponent);
+  
+  // Cosine argument: (n-1)·2π/12 · Φ_d
+  const cosineArg = (n - 1) * 2 * Math.PI / 12 * phi_d;
   
   return baseValue * Math.cos(cosineArg);
 }
 
-// P_n^(d)(k) - Projection function with prime exponentiation tower depth 31
-function calculateP(n, d, k, historicalPrices) {
+// P_n^(d)(k) - Projection function
+// Formula: P_n^(d)(k) = [12^(θ(k,n)/ln(12) - ln(3))] · Π_{i=1}^d cos(θ(k,n) · φ_i)
+// Note: θ(k,n) means theta with k and n parameters (lambda=0, omega=144000, psi=null for basic version)
+function calculateP(n, d, k, historicalPrices, lambda = 0, omega = 144000, psi = null) {
   if (d < 0 || d >= PHI_D.length) return 0;
   
-  // Fixed parameter order: calculateTheta(n, k, lambda, omega, psi)
-  const theta = calculateTheta(n, k, 0, 144000, 0);
+  // Calculate theta: θ(k,n) - note the parameter order in formula is θ(k,n)
+  const theta = calculateTheta(n, k, lambda, omega, psi);
+  
+  // Exponent: θ(k,n)/ln(12) - ln(3)
   const exponent = theta / Math.log(12) - Math.log(3);
   
-  // Use prime tower depth 31: compute 12^(p1^(p2^p3)), then use its logarithm for scaling
-  const tetratedValue = tetration(12, TETRATION_DEPTH);
-  // Scale exponent by prime tower depth factor: log(tower) / log(12) / 31
-  const tetrationScale = Math.log(tetratedValue) / (Math.log(12) * TETRATION_DEPTH);
-  const scaledExponent = exponent * tetrationScale;
-  const baseTerm = Math.pow(12, scaledExponent);
+  // 12^exponent - direct calculation, no prime tower scaling
+  const baseTerm = Math.pow(12, exponent);
   
-  // Product of cosines
+  // Product of cosines: Π_{i=1}^d cos(θ(k,n) · φ_i)
   let product = 1;
   for (let i = 0; i <= d && i < PHI_D.length; i++) {
     product *= Math.cos(theta * PHI_D[i]);
@@ -519,30 +578,91 @@ function calculateP(n, d, k, historicalPrices) {
   return baseTerm * product;
 }
 
-// L(n, d, k, λ) - Lattice Output function with prime exponentiation tower depth 31
-function calculateL(n, d, k, lambda, historicalPrices) {
+// L(n, d, k, λ) - Lattice Output function
+// Formula: L(n,d,k,λ) = 3^(θ(n,k,λ)) · Π_{i=1}^d cos(θ(n,k,λ) · φ_i) · Γ(k) · ν(λ) · Γ(n,d)
+// Exact formula from screenshots - no prime tower scaling, direct calculation
+function calculateL(n, d, k, lambda, historicalPrices, omega = 144000, psi = null) {
   if (d < 0 || d >= PHI_D.length) return 0;
   
-  const theta = calculateTheta(n, k, lambda, 144000, 0);
+  // Calculate theta with all parameters
+  const theta = calculateTheta(n, k, lambda, omega, psi);
   
-  // Use prime tower depth 31: compute 3^(p1^(p2^p3)), then use its logarithm for scaling
-  const tetratedValue = tetration(3, TETRATION_DEPTH);
-  // Scale theta by prime tower depth factor: log(tower) / log(3) / 31
-  const tetrationScale = Math.log(tetratedValue) / (Math.log(3) * TETRATION_DEPTH);
-  const scaledTheta = theta * tetrationScale;
-  const threeToTheta = Math.pow(3, scaledTheta);
+  // 3^(θ(n,k,λ)) - direct exponentiation, no scaling
+  const threeToTheta = Math.pow(3, theta);
   
-  // Product of cosines
+  // Product of cosines: Π_{i=1}^d cos(θ(n,k,λ) · φ_i)
   let cosineProduct = 1;
   for (let i = 0; i <= d && i < PHI_D.length; i++) {
     cosineProduct *= Math.cos(theta * PHI_D[i]);
   }
   
+  // Γ(k) = (-1)^k (Möbius duality twist)
   const gammaK = calculateMobiusGamma(k);
+  
+  // ν(λ) = 3^λ mod 3
   const nuLambda = calculateNu(lambda);
+  
+  // Γ(n,d) = log₂(count of primes in d / entropy of lattice points)
   const gammaND = calculateGamma(n, d, historicalPrices);
   
+  // Complete formula: L(n,d,k,λ) = 3^θ · Π cos(θ·φ_i) · Γ(k) · ν(λ) · Γ(n,d)
   return threeToTheta * cosineProduct * gammaK * nuLambda * gammaND;
+}
+
+// C(n, d, k, λ, ω, ψ) - Complete Crystalline function
+// Formula: C(n,d,k,λ,ω,ψ) = 3^(θ(n,k,λ,ω,ψ)) · Π_{i=1}^d [cos(θ(n,k,λ,ω,ψ) · φ_i)] · Γ(k) · ν(λ) · ω · Ψ(ψ) · Γ(n,d)
+function calculateC(n, d, k, lambda, omega, psi, historicalPrices) {
+  if (d < 0 || d >= PHI_D.length) return 0;
+  
+  // Calculate theta with all parameters
+  const theta = calculateTheta(n, k, lambda, omega, psi);
+  
+  // 3^(θ(n,k,λ,ω,ψ))
+  const threeToTheta = Math.pow(3, theta);
+  
+  // Product of cosines: Π_{i=1}^d [cos(θ(n,k,λ,ω,ψ) · φ_i)]
+  let cosineProduct = 1;
+  for (let i = 0; i <= d && i < PHI_D.length; i++) {
+    cosineProduct *= Math.cos(theta * PHI_D[i]);
+  }
+  
+  // Γ(k) = (-1)^k
+  const gammaK = calculateMobiusGamma(k);
+  
+  // ν(λ) = 3^λ mod 3
+  const nuLambda = calculateNu(lambda);
+  
+  // ω term (omega value, normalized)
+  const omegaTerm = omega / 144000;
+  
+  // Ψ(ψ) - Plimpton triple generator
+  // If psi is a number (from psiFromDepth), we need to extract p and q
+  let psiValue = 1;
+  if (typeof psi === 'number') {
+    // psi is already (p² - q²) / (p² + q²) from psiPlimpton
+    // For Ψ(ψ), we use the Plimpton ratio
+    psiValue = psi;
+  } else if (psi && typeof psi === 'object' && psi.p && psi.q) {
+    // Calculate Plimpton ratio
+    const p2 = psi.p * psi.p;
+    const q2 = psi.q * psi.q;
+    psiValue = (p2 - q2) / (p2 + q2);
+  } else {
+    // Default: use depth prime
+    const depthPrime = 31;
+    const idx = PRIME_STOPS.indexOf(depthPrime);
+    const p = depthPrime;
+    const q = idx > 0 ? PRIME_STOPS[idx - 1] : 2;
+    const p2 = p * p;
+    const q2 = q * q;
+    psiValue = (p2 - q2) / (p2 + q2);
+  }
+  
+  // Γ(n,d) = log₂(count of primes in d / entropy of lattice points)
+  const gammaND = calculateGamma(n, d, historicalPrices);
+  
+  // Complete formula: C(n,d,k,λ,ω,ψ) = 3^θ · Π cos(θ·φ_i) · Γ(k) · ν(λ) · ω · Ψ(ψ) · Γ(n,d)
+  return threeToTheta * cosineProduct * gammaK * nuLambda * omegaTerm * psiValue * gammaND;
 }
 
 // Complex number helper
@@ -948,25 +1068,21 @@ function detectPriceJump(historicalPrices, projections, jumpThreshold = 0.05) {
   return false;
 }
 
-// Recursive self-similar lattice calculation at depth level with prime tower depth 31 at every layer
-function recursiveLatticeLayer(n, d, k, lambda, depth, maxDepth, effectivePrimes, historicalPrices) {
+// Recursive self-similar lattice calculation at depth level
+// Uses correct L(n,d,k,λ) formula: 3^(θ(n,k,λ)) · Π_{i=1}^d cos(θ(n,k,λ) · φ_i) · Γ(k) · ν(λ) · Γ(n,d)
+function recursiveLatticeLayer(n, d, k, lambda, depth, maxDepth, effectivePrimes, historicalPrices, omega = 144000, psi = null) {
   if (depth > maxDepth) return 1;
-  
-  // Apply prime exponentiation tower depth 31 at EVERY recursive layer (self-similar structure)
-  const tetrated3 = tetration(3, TETRATION_DEPTH);
   
   // Self-similar scaling factor based on depth (fractal structure)
   const depthScale = Math.pow(2, -depth); // Each layer is half the scale (self-similar)
   
-  // Calculate theta with recursive self-similarity
-  const baseTheta = calculateTheta(n, k, lambda, 144000, 0);
+  // Calculate theta with correct formula: θ(n,k,λ,ω,ψ) = k·π·(1 + √5) + n·2π/12 + log3(ν(λ)) + ω/432 + p² - q²
+  const baseTheta = calculateTheta(n, k, lambda, omega, psi);
   // Apply self-similar scaling at this depth
   const theta = baseTheta * depthScale;
   
-  // Apply prime tower depth 31 scaling at THIS layer (recursive application)
-  const tetrationScale3 = Math.log(tetrated3) / (Math.log(3) * TETRATION_DEPTH);
-  const scaledTheta = theta * tetrationScale3;
-  const threeToTheta = Math.pow(3, scaledTheta);
+  // 3^(θ(n,k,λ)) - direct exponentiation, no prime tower scaling
+  const threeToTheta = Math.pow(3, theta);
   
   // Recursive cosine product with self-similar structure
   let cosineProduct = 1;
@@ -985,13 +1101,14 @@ function recursiveLatticeLayer(n, d, k, lambda, depth, maxDepth, effectivePrimes
     }
   }
   
-  // Apply gamma and nu with prime tower depth 31
+  // Apply gamma and nu with correct formulas
   const gammaK = calculateMobiusGamma(k);
-  const nuLambda = calculateNu(lambda); // This already uses prime tower depth 31
+  const nuLambda = calculateNu(lambda); // ν(λ) = 3^λ mod 3
   const gammaND = calculateGamma(n, d, historicalPrices);
   
   // Combine with recursive self-similar structure
   // Each layer contributes with its depth scale (fractal structure)
+  // Using L(n,d,k,λ) formula: 3^θ · Π cos(θ·φ_i) · Γ(k) · ν(λ) · Γ(n,d)
   return threeToTheta * cosineProduct * gammaK * nuLambda * gammaND * depthScale;
 }
 
@@ -1495,6 +1612,7 @@ function getProjectionColor(i, alpha = 0.9) {
 }
 
 function Projection() {
+  const location = useLocation();
   const [symbol, setSymbol] = useState('');
   const [interval, setInterval] = useState('1D');
   const [chartData, setChartData] = useState(null);
@@ -1521,6 +1639,10 @@ function Projection() {
   const [omegaHz, setOmegaHz] = useState(432); // Cymatic frequency (432Hz default)
   const [useOmegaSchedule, setUseOmegaSchedule] = useState(false); // Toggle omega schedule
   const [useLambdaSchedule, setUseLambdaSchedule] = useState(true); // Toggle lambda schedule
+  const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [projectionLoaded, setProjectionLoaded] = useState(false);
+  const [loadedProjectionId, setLoadedProjectionId] = useState(null);
   const inputRef = useRef(null);
   const chartDataRef = useRef(null);
   const historicalPricesRef = useRef(null);
@@ -2262,6 +2384,75 @@ function Projection() {
     }
   }, [symbol, interval, projectionSteps, projectionModel, primeDepthIndex, base, projectionCount, beta]);
 
+  // Load saved projection if navigating from Data page
+  useEffect(() => {
+    if (location.state?.loadProjection) {
+      const savedProjection = location.state.loadProjection;
+      
+      // Mark that a projection was loaded
+      setProjectionLoaded(true);
+      setLoadedProjectionId(savedProjection.id || null);
+      
+      // Load all configuration parameters
+      setSymbol(savedProjection.symbol || '');
+      setInterval(savedProjection.interval || '1D');
+      setProjectionModel(savedProjection.projectionModel || 'lattice');
+      setProjectionSteps(savedProjection.projectionSteps || 20);
+      setProjectionHours(savedProjection.projectionHours || 48);
+      
+      if (savedProjection.projectionModel === 'primetetration') {
+        setBase(savedProjection.base || 3);
+        setProjectionCount(savedProjection.projectionCount || 12);
+        setPrimeDepthIndex(savedProjection.primeDepthIndex !== undefined ? savedProjection.primeDepthIndex : 4);
+        setOmegaHz(savedProjection.omegaHz || 432);
+        setUseLambdaSchedule(savedProjection.useLambdaSchedule !== undefined ? savedProjection.useLambdaSchedule : true);
+        setUseOmegaSchedule(savedProjection.useOmegaSchedule || false);
+      }
+      
+      // Load saved chart data if available
+      if (savedProjection.chartData) {
+        // Set historical prices ref for calculations
+        if (savedProjection.chartData.historicalPrices && Array.isArray(savedProjection.chartData.historicalPrices)) {
+          historicalPricesRef.current = savedProjection.chartData.historicalPrices;
+        }
+        
+        // Restore chart data with all datasets and labels
+        if (savedProjection.chartData.labels && savedProjection.chartData.datasets) {
+          const restoredChartData = {
+            labels: savedProjection.chartData.labels || [],
+            datasets: (savedProjection.chartData.datasets || []).map(dataset => ({
+              ...dataset,
+              data: Array.isArray(dataset.data) ? dataset.data.map(d => d !== null && d !== undefined ? Number(d) : null) : [],
+            })),
+            currentPrice: savedProjection.chartData.currentPrice !== undefined ? Number(savedProjection.chartData.currentPrice) : null,
+            change: savedProjection.chartData.change !== undefined ? Number(savedProjection.chartData.change) : null,
+            changePercent: savedProjection.chartData.changePercent !== undefined ? Number(savedProjection.chartData.changePercent) : null,
+            projectedPrice: savedProjection.chartData.projectedPrice !== undefined ? Number(savedProjection.chartData.projectedPrice) : null,
+            projectedChange: savedProjection.chartData.projectedChange !== undefined ? Number(savedProjection.chartData.projectedChange) : null,
+            projectedChangePercent: savedProjection.chartData.projectedChangePercent !== undefined ? Number(savedProjection.chartData.projectedChangePercent) : null,
+          };
+          
+          // Set chart data to display the saved chart
+          setChartData(restoredChartData);
+          chartDataRef.current = restoredChartData;
+        }
+      }
+      
+      // Load snapshot data for Prime Tetration if available
+      if (savedProjection.snapshotData && savedProjection.projectionModel === 'primetetration') {
+        setSnapshotData(savedProjection.snapshotData);
+      }
+      
+      // Clear the state to prevent reloading on re-render
+      window.history.replaceState({}, document.title);
+      
+      // Auto-hide the loaded message after 5 seconds
+      setTimeout(() => {
+        setProjectionLoaded(false);
+      }, 5000);
+    }
+  }, [location.state]);
+
   useEffect(() => {
     const saved = localStorage.getItem('projectionRecentSearches');
     if (saved) {
@@ -2287,6 +2478,84 @@ function Projection() {
   const handleRefresh = () => {
     if (symbol && symbol.trim()) {
       loadChartData();
+    }
+  };
+
+  const handleSaveProjection = () => {
+    if (!symbol || !symbol.trim()) {
+      setError('Please enter a stock symbol first');
+      return;
+    }
+    if (!chartData && !snapshotData) {
+      setError('No projection data to save. Please load chart data first.');
+      return;
+    }
+
+    setSaving(true);
+    setSaveSuccess(false);
+
+    try {
+      const projectionData = {
+        symbol: symbol.toUpperCase().trim(),
+        projectionModel,
+        interval,
+        projectionSteps,
+        projectionHours,
+        // Prime Tetration specific
+        base,
+        projectionCount,
+        primeDepth: PRIME_STOPS[primeDepthIndex] || 31,
+        primeDepthIndex,
+        omegaHz,
+        useLambdaSchedule,
+        useOmegaSchedule,
+        beta,
+        // Data - Deep clone to ensure all data is saved
+        snapshotData: snapshotData ? JSON.parse(JSON.stringify(snapshotData)) : null,
+        chartData: chartData ? (() => {
+          // Deep clone chart data to ensure everything is saved
+          const clonedChartData = JSON.parse(JSON.stringify({
+            // Complete chart data for Price Projection Chart
+            labels: chartData.labels || [],
+            datasets: chartData.datasets ? chartData.datasets.map(dataset => ({
+              label: dataset.label || '',
+              data: Array.isArray(dataset.data) ? dataset.data.map(d => d !== null && d !== undefined ? Number(d) : null) : [],
+              borderColor: dataset.borderColor || 'rgb(59, 130, 246)',
+              backgroundColor: dataset.backgroundColor || 'rgba(59, 130, 246, 0.1)',
+              borderWidth: dataset.borderWidth || 2,
+              borderDash: dataset.borderDash || undefined,
+              tension: dataset.tension !== undefined ? dataset.tension : 0.4,
+              fill: dataset.fill !== undefined ? dataset.fill : false,
+              pointRadius: dataset.pointRadius !== undefined ? dataset.pointRadius : 2,
+              pointHoverRadius: dataset.pointHoverRadius !== undefined ? dataset.pointHoverRadius : 6,
+              spanGaps: dataset.spanGaps !== undefined ? dataset.spanGaps : false,
+              showLine: dataset.showLine !== undefined ? dataset.showLine : true,
+              stepped: dataset.stepped !== undefined ? dataset.stepped : false,
+            })) : [],
+            // Price metrics
+            currentPrice: chartData.currentPrice !== undefined ? Number(chartData.currentPrice) : null,
+            change: chartData.change !== undefined ? Number(chartData.change) : null,
+            changePercent: chartData.changePercent !== undefined ? Number(chartData.changePercent) : null,
+            projectedPrice: chartData.projectedPrice !== undefined ? Number(chartData.projectedPrice) : null,
+            projectedChange: chartData.projectedChange !== undefined ? Number(chartData.projectedChange) : null,
+            projectedChangePercent: chartData.projectedChangePercent !== undefined ? Number(chartData.projectedChangePercent) : null,
+            // Historical data for reference
+            historicalPrices: historicalPricesRef.current ? historicalPricesRef.current.map(p => Number(p)) : [],
+          }));
+          return clonedChartData;
+        })() : null,
+        // Metadata
+        savedAt: new Date().toISOString(),
+      };
+
+      saveProjection(projectionData);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (error) {
+      console.error('Error saving projection:', error);
+      setError('Failed to save projection: ' + error.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -2579,198 +2848,298 @@ function Projection() {
           </div>
         </div>
 
-        <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-3 bg-gray-50 dark:bg-gray-900/30 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="flex-1">
-            <label htmlFor="projectionModel" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              Projection Model
-            </label>
-            <select
-              id="projectionModel"
-              value={projectionModel}
-              onChange={(e) => {
-                setProjectionModel(e.target.value);
-                if (chartData) {
-                  setTimeout(() => loadChartData(), 100);
-                }
-              }}
-              className="w-full sm:w-64 px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white transition-all text-sm font-medium"
-            >
-              <option value="lattice">12-Fold Lattice Model</option>
-              <option value="primetetration">Prime Tetration Projections</option>
-              <option value="montecarlo">Monte Carlo Simulation</option>
-            </select>
+        <div className="mt-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Projection Model Configuration
+            </h3>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Configure your projection parameters</p>
           </div>
-          {projectionModel === 'primetetration' && (
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-              <div className="flex-1">
-                <label htmlFor="base" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  Base (seed)
-                </label>
-                <select
-                  id="base"
-                  value={base}
-                  onChange={(e) => {
-                    setBase(parseInt(e.target.value, 10));
-                    if (chartData) {
-                      setTimeout(() => loadChartData(), 100);
-                    }
-                  }}
-                  className="w-full sm:w-32 px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white transition-all text-sm font-medium"
-                >
-                  <option value={3}>3 (preferred)</option>
-                  <option value={2}>2 (Enigma-style)</option>
-                </select>
-              </div>
-              <div className="flex-1">
-                <label htmlFor="projectionCount" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  Projections Count
-                </label>
-                <select
-                  id="projectionCount"
-                  value={projectionCount}
-                  onChange={(e) => {
-                    setProjectionCount(parseInt(e.target.value, 10));
-                    if (chartData) {
-                      setTimeout(() => loadChartData(), 100);
-                    }
-                  }}
-                  className="w-full sm:w-32 px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white transition-all text-sm font-medium"
-                >
-                  <option value={11}>11</option>
-                  <option value={12}>12</option>
-                  <option value={13}>13</option>
-                </select>
-              </div>
-              <div className="flex-1">
-                <label htmlFor="primeDepthSlider" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  Prime Depth: {PRIME_STOPS[primeDepthIndex] || 31}
-                </label>
-                <input
-                  type="range"
-                  id="primeDepthSlider"
-                  min="0"
-                  max={PRIME_STOPS.length - 1}
-                  step="1"
-                  value={primeDepthIndex}
-                  onChange={(e) => {
-                    setPrimeDepthIndex(parseInt(e.target.value, 10));
-                    if (chartData) {
-                      setTimeout(() => loadChartData(), 100);
-                    }
-                  }}
-                  className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-600"
-                />
-                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  <span>{PRIME_STOPS[0]}</span>
-                  <span>{PRIME_STOPS[PRIME_STOPS.length - 1]}</span>
+          
+          <div className="p-6 space-y-6">
+            <div className="space-y-2">
+              <label htmlFor="projectionModel" className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Projection Model
+              </label>
+              <select
+                id="projectionModel"
+                value={projectionModel}
+                onChange={(e) => {
+                  setProjectionModel(e.target.value);
+                  if (chartData) {
+                    setTimeout(() => loadChartData(), 100);
+                  }
+                }}
+                className="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white transition-all text-sm font-medium bg-white"
+              >
+                <option value="lattice">12-Fold Lattice Model</option>
+                <option value="primetetration">Prime Tetration Projections</option>
+                <option value="montecarlo">Monte Carlo Simulation</option>
+              </select>
+            </div>
+
+            {projectionModel === 'primetetration' && (
+              <>
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                    </svg>
+                    Core Parameters
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="space-y-2">
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                        Base (seed)
+                      </label>
+                      <label className="inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={base === 3}
+                          onChange={() => {
+                            const newBase = base === 3 ? 2 : 3;
+                            setBase(newBase);
+                            if (chartData) {
+                              setTimeout(() => loadChartData(), 100);
+                            }
+                          }}
+                          className="sr-only peer" 
+                        />
+                        <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        <span className="ms-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {base === 3 ? '3 (preferred)' : '2 (Enigma-style)'}
+                        </span>
+                      </label>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="projectionCount" className="block text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                        Projections Count
+                      </label>
+                      <select
+                        id="projectionCount"
+                        value={projectionCount}
+                        onChange={(e) => {
+                          setProjectionCount(parseInt(e.target.value, 10));
+                          if (chartData) {
+                            setTimeout(() => loadChartData(), 100);
+                          }
+                        }}
+                        className="w-full px-4 py-2.5 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white transition-all text-sm font-medium bg-white"
+                      >
+                        <option value={11}>11</option>
+                        <option value={12}>12</option>
+                        <option value={13}>13</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="primeDepthSlider" className="block text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                        Prime Depth: <span className="text-purple-600 dark:text-purple-400 font-bold">{PRIME_STOPS[primeDepthIndex] || 31}</span>
+                      </label>
+                      <input
+                        type="range"
+                        id="primeDepthSlider"
+                        min="0"
+                        max={PRIME_STOPS.length - 1}
+                        step="1"
+                        value={primeDepthIndex}
+                        onChange={(e) => {
+                          setPrimeDepthIndex(parseInt(e.target.value, 10));
+                          if (chartData) {
+                            setTimeout(() => loadChartData(), 100);
+                          }
+                        }}
+                        className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                      />
+                      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                        <span>{PRIME_STOPS[0]}</span>
+                        <span>{PRIME_STOPS[PRIME_STOPS.length - 1]}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                        Ω (Omega Hz)
+                      </label>
+                      <label className="inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={omegaHz === 528}
+                          onChange={() => {
+                            const newOmegaHz = omegaHz === 432 ? 528 : 432;
+                            setOmegaHz(newOmegaHz);
+                            if (chartData) {
+                              setTimeout(() => loadChartData(), 100);
+                            }
+                          }}
+                          className="sr-only peer" 
+                        />
+                        <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                        <span className="ms-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {omegaHz} Hz
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Schedule Options
+                  </h4>
+                  <div className="flex flex-wrap gap-6">
+                    <label className="inline-flex items-center cursor-pointer group">
+                      <input 
+                        type="checkbox" 
+                        checked={useLambdaSchedule}
+                        onChange={(e) => {
+                          setUseLambdaSchedule(e.target.checked);
+                          if (chartData) {
+                            setTimeout(() => loadChartData(), 100);
+                          }
+                        }}
+                        className="sr-only peer" 
+                      />
+                      <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                      <span className="ms-3 text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                        Use λ Schedule (dub, kubt, k'anch)
+                      </span>
+                    </label>
+                    <label className="inline-flex items-center cursor-pointer group">
+                      <input 
+                        type="checkbox" 
+                        checked={useOmegaSchedule}
+                        onChange={(e) => {
+                          setUseOmegaSchedule(e.target.checked);
+                          if (chartData) {
+                            setTimeout(() => loadChartData(), 100);
+                          }
+                        }}
+                        className="sr-only peer" 
+                      />
+                      <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      <span className="ms-3 text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        Use Ω Schedule (vary frequencies)
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              </>
+            )}
+            {projectionModel === 'lattice' && (
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-2">
+                      <svg className="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                      Lattice Model Analysis
+                    </h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Perform recursive FFT analysis on price signal</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRecursiveAnalysis}
+                    disabled={analyzing || !symbol || !symbol.trim() || !historicalPricesRef.current || (historicalPricesRef.current && historicalPricesRef.current.length < 8)}
+                    className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white text-sm font-semibold rounded-lg hover:from-purple-700 hover:to-purple-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed disabled:opacity-50 shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+                    title={!symbol || !symbol.trim() ? 'Enter a stock symbol first' : !historicalPricesRef.current ? 'Load chart data first' : (historicalPricesRef.current && historicalPricesRef.current.length < 8) ? 'Need at least 8 data points for FFT analysis' : 'Perform recursive FFT analysis on price signal'}
+                  >
+                    {analyzing ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Analyzing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        <span>Recursive Analysis</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
-              <div className="flex-1">
-                <label htmlFor="beta" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  Beta (scale)
-                </label>
-                <input
-                  type="number"
-                  id="beta"
-                  step="0.001"
-                  value={beta}
-                  onChange={(e) => {
-                    setBeta(parseFloat(e.target.value) || 0.01);
-                    if (chartData) {
-                      setTimeout(() => loadChartData(), 100);
-                    }
-                  }}
-                  className="w-full sm:w-32 px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white transition-all text-sm font-medium"
-                />
+            )}
+            
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-6 flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {saveSuccess ? (
+                    <span className="text-green-600 dark:text-green-400 font-medium flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Projection saved successfully!
+                    </span>
+                  ) : (
+                    'Save this projection configuration to view it later on the Data page'
+                  )}
+                </p>
               </div>
-              <div className="flex-1">
-                <label htmlFor="omegaHz" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  Ω (Omega Hz)
-                </label>
-                <select
-                  id="omegaHz"
-                  value={omegaHz}
-                  onChange={(e) => {
-                    setOmegaHz(parseInt(e.target.value, 10));
-                    if (chartData) {
-                      setTimeout(() => loadChartData(), 100);
-                    }
-                  }}
-                  className="w-full sm:w-32 px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white transition-all text-sm font-medium"
-                >
-                  <option value={432}>432 Hz</option>
-                  <option value={528}>528 Hz</option>
-                  <option value={639}>639 Hz</option>
-                  <option value={741}>741 Hz</option>
-                </select>
-              </div>
+              <button
+                onClick={handleSaveProjection}
+                disabled={saving || !symbol || !symbol.trim() || (!chartData && !snapshotData)}
+                className="px-6 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm font-semibold rounded-lg hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed disabled:opacity-50 shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+                title={!symbol || !symbol.trim() ? 'Enter a stock symbol first' : (!chartData && !snapshotData) ? 'Load chart data first' : 'Save projection to Data page'}
+              >
+                {saving ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    </svg>
+                    <span>Save Projection</span>
+                  </>
+                )}
+              </button>
             </div>
-          )}
-          {projectionModel === 'primetetration' && (
-            <div className="flex flex-wrap gap-4 mt-3 items-center">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="useLambdaSchedule"
-                  checked={useLambdaSchedule}
-                  onChange={(e) => {
-                    setUseLambdaSchedule(e.target.checked);
-                    if (chartData) {
-                      setTimeout(() => loadChartData(), 100);
-                    }
-                  }}
-                  className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 dark:focus:ring-purple-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                />
-                <label htmlFor="useLambdaSchedule" className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Use λ Schedule (dub, kubt, k'anch)
-                </label>
-              </div>
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="useOmegaSchedule"
-                  checked={useOmegaSchedule}
-                  onChange={(e) => {
-                    setUseOmegaSchedule(e.target.checked);
-                    if (chartData) {
-                      setTimeout(() => loadChartData(), 100);
-                    }
-                  }}
-                  className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 dark:focus:ring-purple-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                />
-                <label htmlFor="useOmegaSchedule" className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Use Ω Schedule (vary frequencies)
-                </label>
-              </div>
-            </div>
-          )}
-          {projectionModel === 'lattice' && (
-            <button
-              type="button"
-              onClick={handleRecursiveAnalysis}
-              disabled={analyzing || !symbol || !symbol.trim() || !historicalPricesRef.current || (historicalPricesRef.current && historicalPricesRef.current.length < 8)}
-              className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white text-sm font-semibold rounded-lg hover:from-purple-700 hover:to-purple-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed disabled:opacity-50 shadow-md hover:shadow-lg transition-all flex items-center gap-2 self-end sm:self-center"
-              title={!symbol || !symbol.trim() ? 'Enter a stock symbol first' : !historicalPricesRef.current ? 'Load chart data first' : (historicalPricesRef.current && historicalPricesRef.current.length < 8) ? 'Need at least 8 data points for FFT analysis' : 'Perform recursive FFT analysis on price signal'}
-            >
-              {analyzing ? (
-                <>
-                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>Analyzing...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  <span>Recursive Analysis</span>
-                </>
-              )}
-            </button>
-          )}
+          </div>
         </div>
+
+        {projectionLoaded && (
+          <div className="mt-4 bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 rounded-lg p-4">
+            <div className="flex items-start">
+              <svg className="w-5 h-5 text-green-500 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                  Projection loaded successfully! You can now edit the parameters and save changes.
+                </p>
+                <p className="text-xs text-green-600 dark:text-green-300 mt-1">
+                  All saved data has been restored. Modify any settings and click "Save Projection" to update.
+                </p>
+              </div>
+              <button
+                onClick={() => setProjectionLoaded(false)}
+                className="ml-2 text-green-500 hover:text-green-700 dark:hover:text-green-300"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="mt-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 rounded-lg p-4">
