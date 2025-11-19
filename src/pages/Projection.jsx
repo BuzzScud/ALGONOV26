@@ -24,11 +24,108 @@ ChartJS.register(
   Filler
 );
 
-// Dimensional frequencies φ_i (Phonon Correction)
+// Dimensional frequencies φ_i (Phonon Correction) - Full crystalline 12-d set
 const PHI_D = [3, 7, 31, 12, 19, 5, 11, 13, 17, 23, 29, 31];
 
 // Tetration depth constant
 const TETRATION_DEPTH = 31;
+
+// Prime depth slider stops (tetration depth primes)
+const PRIME_STOPS = [11, 13, 17, 29, 31, 47, 59, 61, 97, 101];
+
+// Q8 Fixed-point constants (72-bit with +8 guard bits)
+const MOD_BITS = 72n; // 64 + 8 guard bits
+const MOD = 1n << MOD_BITS; // 2^72
+const LAMBDA = 1n << (MOD_BITS - 2n); // 2^(72-2) for odd base cycles
+const Q_FRAC_BITS = 8n; // +8 bits computations
+const OUTPUT_SCALE = 1n << 64n; // after truncation, map to 64-bit fractional space
+const Q8 = 1 << 8; // 256
+
+// Safe modular exponentiation: a^e mod m (BigInt)
+function modPow(a, e, m) {
+  a = ((a % m) + m) % m;
+  let result = 1n;
+  while (e > 0n) {
+    if (e & 1n) result = (result * a) % m;
+    a = (a * a) % m;
+    e >>= 1n;
+  }
+  return result;
+}
+
+// Compute triadic prime tower amplitude A = base^(p2^p3) mod 2^(64+8),
+// with exponent reduced mod λ(2^k) since base is odd and gcd(base, 2^k)=1.
+function amplitudeFromTriad(base, triad) {
+  const [p1, p2, p3] = triad; // p1 is for reference, we build tower base^(p2^p3)
+  // Exponent E = p2^p3 mod LAMBDA
+  const eMod = modPow(BigInt(p2), BigInt(p3), LAMBDA);
+  const eEff = eMod + LAMBDA; // ensure in correct range for odd base modulo cycles
+  const A = modPow(BigInt(base), eEff, MOD);
+  return A; // 0..2^72-1
+}
+
+// Turn a 72-bit amplitude to symmetric float [-1, +1), truncating +8 bits before mapping
+function amplitudeToSymmetric(A72) {
+  const aQ8 = A72 >> Q_FRAC_BITS; // drop 8 guard bits, now in 0..2^64-1
+  const aUnit = Number(aQ8) / Number(1n << 64n); // [0,1)
+  return (aUnit * 2) - 1; // (-1, +1)
+}
+
+// Z(n): aggregate cosine of all 12 φ_d without sweeping dimensions
+// Lattice angular oscillator for step n (n ≥ 1)
+function latticeOscillatorZ(n) {
+  const k = (n - 1);
+  let sum = 0;
+  for (let i = 0; i < PHI_D.length; i++) {
+    const angle = k * (Math.PI * 2 / 12) * PHI_D[i];
+    sum += Math.cos(angle);
+  }
+  return sum / PHI_D.length; // average in [-1,1]
+}
+
+// Fixed-point Q8 truncation helpers
+function toQ8(xFloat) {
+  // truncate (not round) to Q8
+  const scaled = Math.trunc(xFloat * Q8);
+  return scaled; // integer
+}
+
+function fromQ8(q8int) {
+  return q8int / Q8;
+}
+
+// Quick sieve for first N primes
+function firstNPrimes(N = 500) {
+  const limit = 4000; // enough to get ~550 primes
+  const sieve = new Uint8Array(limit + 1);
+  const primes = [];
+  for (let i = 2; i <= limit; i++) {
+    if (!sieve[i]) {
+      primes.push(i);
+      for (let j = i * 2; j <= limit; j += i) sieve[j] = 1;
+    }
+    if (primes.length >= N) break;
+  }
+  return primes;
+}
+
+const PRIMES_500 = firstNPrimes(500);
+
+// Generate default triads near a given prime depth pDepth
+// Build 11–13 triads centered around pDepth using neighbors in the prime list.
+function generateTriadsAroundPrime(pDepth, count, primes) {
+  const idx = primes.indexOf(pDepth);
+  if (idx === -1) throw new Error(`Depth prime ${pDepth} not in primes list`);
+  const triads = [];
+  const half = Math.floor(count / 2);
+  for (let offset = -half; offset <= half; offset++) {
+    if (triads.length >= count) break;
+    const i = Math.max(0, Math.min(primes.length - 3, idx + offset));
+    // triadic set: [p[i], p[i+1], p[i+2]]
+    triads.push([primes[i], primes[i + 1], primes[i + 2]]);
+  }
+  return triads;
+}
 
 // Tetration function: ^(depth)x = x^(x^(x^...)) depth times
 // For depth 31, we use a logarithmic approach to compute tetration safely
@@ -965,6 +1062,69 @@ function calculateMonteCarloProjection(historicalPrices, projectionSteps, simula
   return projections;
 }
 
+// Prime Tetration Projection using multiple triads (11-13 projection lines)
+function calculatePrimeTetrationProjection(historicalPrices, horizon, base, triads, beta = 0.01) {
+  if (historicalPrices.length < 2) {
+    return { lines: [] };
+  }
+
+  const lastPrice = historicalPrices[historicalPrices.length - 1];
+  const lines = [];
+
+  // Build projections for each triad
+  for (let li = 0; li < triads.length; li++) {
+    const triad = triads[li];
+    const A72 = amplitudeFromTriad(base, triad);
+    const aSym = amplitudeToSymmetric(A72); // [-1,1)
+
+    // Compute ΔP(n) & projection P̂(n)
+    let p = lastPrice;
+    const q8Points = [];
+    let prev = null;
+    let zeroCross = 0;
+    let extrema = 0;
+
+    for (let n = 1; n <= horizon; n++) {
+      const Z = latticeOscillatorZ(n);
+      const delta = beta * aSym * Z; // small fractional change
+      p = p * (1 + delta);
+      const q8 = toQ8(p);
+      q8Points.push(q8);
+
+      // Oscillation stats (zero-cross of Z and turning points on delta)
+      if (n > 1) {
+        const prevZ = latticeOscillatorZ(n - 1);
+        if ((Z > 0 && prevZ <= 0) || (Z < 0 && prevZ >= 0)) zeroCross++;
+        if (prev != null) {
+          const prevDelta = (p - prev) / Math.max(prev, 1e-9);
+          const currDelta = delta;
+          // crude turning point when sign of change in delta flips
+          if (Math.sign(prevDelta) !== Math.sign(currDelta)) extrema++;
+        }
+      }
+      prev = p;
+    }
+
+    lines.push({
+      triad, // [p1, p2, p3]
+      base, // 2 or 3
+      aQ8: (A72 >> Q_FRAC_BITS).toString(), // truncated amplitude
+      pointsQ8: q8Points, // projected prices in Q8 integers
+      points: q8Points.map(fromQ8), // convert back to float for display
+      zeroCrossings: zeroCross,
+      turningPoints: extrema
+    });
+  }
+
+  return {
+    symbol: null, // will be set by caller
+    lastPriceQ8: toQ8(lastPrice),
+    beta,
+    horizon,
+    lines
+  };
+}
+
 // Simple linear regression fallback
 function calculateSimpleProjection(historicalPrices, projectionSteps) {
   if (historicalPrices.length < 2) {
@@ -1024,6 +1184,13 @@ function saveStabilizedModel(symbol, model) {
   }
 }
 
+// Color function for projection lines
+function getProjectionColor(i, alpha = 0.9) {
+  const hues = [210, 0, 40, 90, 140, 260, 300, 20, 170, 200, 280, 320, 45];
+  const h = hues[i % hues.length];
+  return `hsla(${h}, 85%, 60%, ${alpha})`;
+}
+
 function Projection() {
   const [symbol, setSymbol] = useState('');
   const [interval, setInterval] = useState('1D');
@@ -1036,12 +1203,18 @@ function Projection() {
   const [projectionHours, setProjectionHours] = useState(48); // 48-hour projection option
   const [recentSearches, setRecentSearches] = useState([]);
   const [showRecentSearches, setShowRecentSearches] = useState(false);
-  const [projectionModel, setProjectionModel] = useState('lattice'); // 'lattice', 'montecarlo', 'linear'
+  const [projectionModel, setProjectionModel] = useState('lattice'); // 'lattice', 'montecarlo', 'linear', 'primetetration'
   const [modelParams, setModelParams] = useState(null);
   const [showModelInfo, setShowModelInfo] = useState(false);
   const [stabilizedModel, setStabilizedModel] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [showModelParams, setShowModelParams] = useState(false);
+  // Prime Tetration controls
+  const [primeDepthIndex, setPrimeDepthIndex] = useState(4); // Default to index 4 = 31
+  const [base, setBase] = useState(3); // Default seed base 3
+  const [projectionCount, setProjectionCount] = useState(12); // Default 12 projections
+  const [snapshotData, setSnapshotData] = useState(null); // Stores snapshot with multiple lines
+  const [beta, setBeta] = useState(0.01); // Calibration factor
   const inputRef = useRef(null);
   const chartDataRef = useRef(null);
   const historicalPricesRef = useRef(null);
@@ -1200,7 +1373,7 @@ function Projection() {
       
       // Calculate projection steps based on hours if needed
       let stepsToUse = projectionSteps;
-      if (projectionModel === 'lattice' && projectionHours) {
+      if ((projectionModel === 'lattice' || projectionModel === 'primetetration') && projectionHours) {
         // Convert hours to steps based on interval
         // For 1H interval: 1 hour = 1 step
         // For 1D interval: 1 day = 24 hours, so 48 hours = 2 steps
@@ -1213,11 +1386,61 @@ function Projection() {
         }
       }
       
-      if (projectionModel === 'lattice') {
+      // Ensure stepsToUse is valid and positive
+      stepsToUse = Math.max(1, Math.min(1000, stepsToUse || projectionSteps || 20));
+      
+      const lastPrice = historicalPrices[historicalPrices.length - 1];
+      
+      if (projectionModel === 'primetetration') {
+        // Prime Tetration with multiple triads (11-13 projection lines)
+        try {
+          const depthPrime = PRIME_STOPS[primeDepthIndex] || 31;
+          const triads = generateTriadsAroundPrime(depthPrime, projectionCount, PRIMES_500);
+          const snapshotResult = calculatePrimeTetrationProjection(historicalPrices, stepsToUse, base, triads, beta);
+          snapshotResult.symbol = symbol.toUpperCase().trim();
+          setSnapshotData(snapshotResult);
+          
+          // Use first line as primary projection for compatibility
+          if (snapshotResult.lines && snapshotResult.lines.length > 0 && snapshotResult.lines[0].points) {
+            projectedPrices = snapshotResult.lines[0].points;
+            // Ensure we have the correct number of points
+            if (projectedPrices.length !== stepsToUse) {
+              console.warn(`Projected prices length (${projectedPrices.length}) doesn't match stepsToUse (${stepsToUse})`);
+              // Pad or trim to match stepsToUse
+              if (projectedPrices.length < stepsToUse) {
+                const lastProjPrice = projectedPrices[projectedPrices.length - 1] || lastPrice;
+                while (projectedPrices.length < stepsToUse) {
+                  projectedPrices.push(lastProjPrice);
+                }
+              } else {
+                projectedPrices = projectedPrices.slice(0, stepsToUse);
+              }
+            }
+          } else {
+            projectedPrices = calculateSimpleProjection(historicalPrices, stepsToUse);
+          }
+        } catch (err) {
+          console.error('Prime Tetration projection failed, falling back to simple:', err);
+          projectedPrices = calculateSimpleProjection(historicalPrices, stepsToUse);
+          setSnapshotData(null);
+        }
+      } else if (projectionModel === 'lattice') {
         try {
           const result = calculateAdvancedProjection(historicalPrices, stepsToUse, savedModel, 15);
           if (result && result.projections && Array.isArray(result.projections)) {
             projectedPrices = result.projections;
+            // Ensure we have the correct number of points
+            if (projectedPrices.length !== stepsToUse) {
+              console.warn(`Projected prices length (${projectedPrices.length}) doesn't match stepsToUse (${stepsToUse})`);
+              if (projectedPrices.length < stepsToUse) {
+                const lastProjPrice = projectedPrices[projectedPrices.length - 1] || lastPrice;
+                while (projectedPrices.length < stepsToUse) {
+                  projectedPrices.push(lastProjPrice);
+                }
+              } else {
+                projectedPrices = projectedPrices.slice(0, stepsToUse);
+              }
+            }
             currentStabilizedModel = result.stabilizedModel || savedModel;
             
             // Save the updated stabilized model
@@ -1230,24 +1453,80 @@ function Projection() {
           }
         } catch (err) {
           console.error('Lattice projection failed, falling back to simple:', err);
-          projectedPrices = calculateSimpleProjection(historicalPrices, projectionSteps);
+          projectedPrices = calculateSimpleProjection(historicalPrices, stepsToUse);
         }
       } else if (projectionModel === 'montecarlo') {
         try {
-          projectedPrices = calculateMonteCarloProjection(historicalPrices, projectionSteps);
+          projectedPrices = calculateMonteCarloProjection(historicalPrices, stepsToUse);
+          // Ensure we have the correct number of points
+          if (projectedPrices.length !== stepsToUse) {
+            console.warn(`Monte Carlo projected prices length (${projectedPrices.length}) doesn't match stepsToUse (${stepsToUse})`);
+            if (projectedPrices.length < stepsToUse) {
+              const lastProjPrice = projectedPrices[projectedPrices.length - 1] || lastPrice;
+              while (projectedPrices.length < stepsToUse) {
+                projectedPrices.push(lastProjPrice);
+              }
+            } else {
+              projectedPrices = projectedPrices.slice(0, stepsToUse);
+            }
+          }
         } catch (err) {
           console.error('Monte Carlo projection failed, falling back to simple:', err);
-          projectedPrices = calculateSimpleProjection(historicalPrices, projectionSteps);
+          projectedPrices = calculateSimpleProjection(historicalPrices, stepsToUse);
         }
       } else {
-        // Linear regression
-        projectedPrices = calculateSimpleProjection(historicalPrices, projectionSteps);
+        // No valid model selected - use lattice as fallback
+        try {
+          const result = calculateAdvancedProjection(historicalPrices, stepsToUse, savedModel, 15);
+          if (result && result.projections && Array.isArray(result.projections)) {
+            projectedPrices = result.projections;
+            // Ensure we have the correct number of points
+            if (projectedPrices.length !== stepsToUse) {
+              console.warn(`Projected prices length (${projectedPrices.length}) doesn't match stepsToUse (${stepsToUse})`);
+              if (projectedPrices.length < stepsToUse) {
+                const lastProjPrice = projectedPrices[projectedPrices.length - 1] || lastPrice;
+                while (projectedPrices.length < stepsToUse) {
+                  projectedPrices.push(lastProjPrice);
+                }
+              } else {
+                projectedPrices = projectedPrices.slice(0, stepsToUse);
+              }
+            }
+            currentStabilizedModel = result.stabilizedModel || savedModel;
+            
+            // Save the updated stabilized model
+            if (currentStabilizedModel) {
+              saveStabilizedModel(symbol.toUpperCase().trim(), currentStabilizedModel);
+              setStabilizedModel(currentStabilizedModel);
+            }
+          } else {
+            throw new Error('Invalid projection result');
+          }
+        } catch (err) {
+          console.error('Projection failed:', err);
+          projectedPrices = Array(stepsToUse).fill(lastPrice);
+        }
       }
       
-      // Ensure projectedPrices is a valid array
-      const lastPrice = historicalPrices[historicalPrices.length - 1];
+      // Clear snapshot data for non-Prime Tetration models
+      if (projectionModel !== 'primetetration') {
+        setSnapshotData(null);
+      }
+      
+      // Ensure projectedPrices is a valid array with correct length
       if (!Array.isArray(projectedPrices) || projectedPrices.length === 0) {
-        projectedPrices = Array(projectionSteps).fill(lastPrice);
+        projectedPrices = Array(stepsToUse).fill(lastPrice);
+      } else if (projectedPrices.length !== stepsToUse) {
+        // Final check - ensure length matches
+        console.warn(`Final projectedPrices length (${projectedPrices.length}) doesn't match stepsToUse (${stepsToUse}), adjusting...`);
+        if (projectedPrices.length < stepsToUse) {
+          const lastProjPrice = projectedPrices[projectedPrices.length - 1] || lastPrice;
+          while (projectedPrices.length < stepsToUse) {
+            projectedPrices.push(lastProjPrice);
+          }
+        } else {
+          projectedPrices = projectedPrices.slice(0, stepsToUse);
+        }
       }
       
       // Calculate model parameters for display
@@ -1260,7 +1539,18 @@ function Projection() {
       ).reduce((a, b) => a + b, 0) / 12;
       
       // Update model parameters based on selected model
-      if (projectionModel === 'lattice') {
+      if (projectionModel === 'primetetration' && snapshotData) {
+        // Prime Tetration model parameters
+        setModelParams({
+          depthPrime: PRIME_STOPS[primeDepthIndex] || 31,
+          base: base,
+          projectionCount: projectionCount,
+          beta: beta,
+          horizon: stepsToUse,
+          phi: PHI_D,
+          lines: snapshotData.lines ? snapshotData.lines.length : 0,
+        });
+      } else if (projectionModel === 'lattice') {
         const primes = (currentStabilizedModel?.primes && Array.isArray(currentStabilizedModel.primes)) 
           ? currentStabilizedModel.primes 
           : PHI_D.slice(0, 6);
@@ -1483,43 +1773,99 @@ function Projection() {
         projectedData.push(null);
       }
       
+      // Build datasets array
+      const datasets = [
+        {
+          label: `${symbol.toUpperCase()} Historical`,
+          data: historicalData.slice(0, allLabels.length),
+          borderColor: 'rgb(59, 130, 246)',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          tension: 0.4,
+          fill: false,
+          pointRadius: 2,
+          pointHoverRadius: 6,
+          borderWidth: 2,
+          spanGaps: false,
+          showLine: true,
+          stepped: false,
+        },
+      ];
+
+      // Add projection lines based on model
+      if (projectionModel === 'primetetration' && snapshotData && snapshotData.lines && snapshotData.lines.length > 0) {
+        // Multiple projection lines for Prime Tetration (11-13 lines)
+        snapshotData.lines.forEach((line, idx) => {
+          // Ensure line.points has the correct length
+          let linePoints = line.points || [];
+          if (linePoints.length !== stepsToUse) {
+            console.warn(`Line ${idx} points length (${linePoints.length}) doesn't match stepsToUse (${stepsToUse})`);
+            if (linePoints.length < stepsToUse) {
+              const lastPoint = linePoints[linePoints.length - 1] || lastPrice;
+              while (linePoints.length < stepsToUse) {
+                linePoints.push(lastPoint);
+              }
+            } else {
+              linePoints = linePoints.slice(0, stepsToUse);
+            }
+          }
+          
+          const lineData = allLabels.map((label, index) => {
+            if (index < safeHistoricalPrices.length) {
+              return null;
+            }
+            const projectionIndex = index - safeHistoricalPrices.length;
+            if (projectionIndex >= 0 && projectionIndex < linePoints.length) {
+              // First point: smooth connection to last historical price
+              if (projectionIndex === 0 && safeHistoricalPrices.length > 0) {
+                const lastHistorical = safeHistoricalPrices[safeHistoricalPrices.length - 1];
+                return lastHistorical * 0.8 + linePoints[0] * 0.2;
+              }
+              const point = linePoints[projectionIndex];
+              return (point !== null && point !== undefined && !isNaN(point) && point > 0) ? Number(point) : null;
+            }
+            return null;
+          });
+
+          datasets.push({
+            label: `Triad [${line.triad.join('-')}]`,
+            data: lineData,
+            borderColor: getProjectionColor(idx, 0.9),
+            backgroundColor: getProjectionColor(idx, 0.18),
+            fill: false,
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.4,
+            spanGaps: false,
+            showLine: true,
+            stepped: false,
+          });
+        });
+      } else {
+        // Single projection line for other models
+        datasets.push({
+            label: `${symbol.toUpperCase()} Projected (${
+            projectionModel === 'lattice' ? '12-Fold Lattice' : 
+            projectionModel === 'montecarlo' ? 'Monte Carlo' : 
+            'Lattice'
+          })`,
+          data: projectedData.slice(0, allLabels.length),
+          borderColor: 'rgb(168, 85, 247)',
+          backgroundColor: 'rgba(168, 85, 247, 0.1)',
+          borderDash: [5, 5],
+          tension: 0.4,
+          fill: false,
+          pointRadius: 2,
+          pointHoverRadius: 6,
+          borderWidth: 2,
+          spanGaps: false,
+          showLine: true,
+          stepped: false,
+        });
+      }
+
       const chartDataObj = {
         labels: allLabels,
-        datasets: [
-          {
-            label: `${symbol.toUpperCase()} Historical`,
-            data: historicalData.slice(0, allLabels.length),
-            borderColor: 'rgb(59, 130, 246)',
-            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-            tension: 0.4,
-            fill: false,
-            pointRadius: 2,
-            pointHoverRadius: 6,
-            borderWidth: 2,
-            spanGaps: false,
-            showLine: true,
-            stepped: false,
-          },
-          {
-            label: `${symbol.toUpperCase()} Projected (${
-              projectionModel === 'lattice' ? '12-Fold Lattice' : 
-              projectionModel === 'montecarlo' ? 'Monte Carlo' : 
-              'Linear'
-            })`,
-            data: projectedData.slice(0, allLabels.length),
-            borderColor: 'rgb(168, 85, 247)',
-            backgroundColor: 'rgba(168, 85, 247, 0.1)',
-            borderDash: [5, 5],
-            tension: 0.4,
-            fill: false,
-            pointRadius: 2,
-            pointHoverRadius: 6,
-            borderWidth: 2,
-            spanGaps: false,
-            showLine: true,
-            stepped: false,
-          },
-        ],
+        datasets: datasets,
         currentPrice: data.currentPrice || lastPrice,
         change: change,
         changePercent: changePercent,
@@ -1577,7 +1923,7 @@ function Projection() {
     } finally {
       setLoading(false);
     }
-  }, [symbol, interval, projectionSteps, projectionModel]);
+  }, [symbol, interval, projectionSteps, projectionModel, primeDepthIndex, base, projectionCount, beta]);
 
   useEffect(() => {
     const saved = localStorage.getItem('projectionRecentSearches');
@@ -1913,10 +2259,95 @@ function Projection() {
               className="w-full sm:w-64 px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white transition-all text-sm font-medium"
             >
               <option value="lattice">12-Fold Lattice Model</option>
+              <option value="primetetration">Prime Tetration Projections</option>
               <option value="montecarlo">Monte Carlo Simulation</option>
-              <option value="linear">Linear Regression</option>
             </select>
           </div>
+          {projectionModel === 'primetetration' && (
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+              <div className="flex-1">
+                <label htmlFor="base" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Base (seed)
+                </label>
+                <select
+                  id="base"
+                  value={base}
+                  onChange={(e) => {
+                    setBase(parseInt(e.target.value, 10));
+                    if (chartData) {
+                      setTimeout(() => loadChartData(), 100);
+                    }
+                  }}
+                  className="w-full sm:w-32 px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white transition-all text-sm font-medium"
+                >
+                  <option value={3}>3 (preferred)</option>
+                  <option value={2}>2 (Enigma-style)</option>
+                </select>
+              </div>
+              <div className="flex-1">
+                <label htmlFor="projectionCount" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Projections Count
+                </label>
+                <select
+                  id="projectionCount"
+                  value={projectionCount}
+                  onChange={(e) => {
+                    setProjectionCount(parseInt(e.target.value, 10));
+                    if (chartData) {
+                      setTimeout(() => loadChartData(), 100);
+                    }
+                  }}
+                  className="w-full sm:w-32 px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white transition-all text-sm font-medium"
+                >
+                  <option value={11}>11</option>
+                  <option value={12}>12</option>
+                  <option value={13}>13</option>
+                </select>
+              </div>
+              <div className="flex-1">
+                <label htmlFor="primeDepthSlider" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Prime Depth: {PRIME_STOPS[primeDepthIndex] || 31}
+                </label>
+                <input
+                  type="range"
+                  id="primeDepthSlider"
+                  min="0"
+                  max={PRIME_STOPS.length - 1}
+                  step="1"
+                  value={primeDepthIndex}
+                  onChange={(e) => {
+                    setPrimeDepthIndex(parseInt(e.target.value, 10));
+                    if (chartData) {
+                      setTimeout(() => loadChartData(), 100);
+                    }
+                  }}
+                  className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                />
+                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <span>{PRIME_STOPS[0]}</span>
+                  <span>{PRIME_STOPS[PRIME_STOPS.length - 1]}</span>
+                </div>
+              </div>
+              <div className="flex-1">
+                <label htmlFor="beta" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Beta (scale)
+                </label>
+                <input
+                  type="number"
+                  id="beta"
+                  step="0.001"
+                  value={beta}
+                  onChange={(e) => {
+                    setBeta(parseFloat(e.target.value) || 0.01);
+                    if (chartData) {
+                      setTimeout(() => loadChartData(), 100);
+                    }
+                  }}
+                  className="w-full sm:w-32 px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white transition-all text-sm font-medium"
+                />
+              </div>
+            </div>
+          )}
           {projectionModel === 'lattice' && (
             <button
               type="button"
@@ -2137,7 +2568,7 @@ function Projection() {
           </div>
         )}
 
-        {modelParams && projectionModel !== 'linear' && (
+        {modelParams && (
           <div className="mt-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
             <button
               type="button"
@@ -2149,7 +2580,8 @@ function Projection() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
                 </svg>
                 <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
-                  {projectionModel === 'lattice' ? 'Stabilized Model Parameters' : 
+                  {projectionModel === 'primetetration' ? 'Prime Tetration Parameters' :
+                   projectionModel === 'lattice' ? 'Stabilized Model Parameters' : 
                    projectionModel === 'montecarlo' ? 'Monte Carlo Parameters' : 
                    'Model Parameters'}
                 </h4>
@@ -2174,7 +2606,53 @@ function Projection() {
             {showModelParams && (
               <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900/30">
                 <div className="flex flex-col gap-4">
-                  {projectionModel === 'lattice' ? (
+                  {projectionModel === 'primetetration' ? (
+                    <>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 dark:text-gray-400">Depth Prime:</span>
+                          <span className="font-mono font-semibold text-gray-900 dark:text-white">{modelParams.depthPrime}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 dark:text-gray-400">Base:</span>
+                          <span className="font-mono font-semibold text-gray-900 dark:text-white">{modelParams.base}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 dark:text-gray-400">Lines:</span>
+                          <span className="font-mono font-semibold text-gray-900 dark:text-white">{modelParams.lines}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 dark:text-gray-400">Beta:</span>
+                          <span className="font-mono font-semibold text-gray-900 dark:text-white">{modelParams.beta}</span>
+                        </div>
+                      </div>
+                      
+                      {modelParams.phi && Array.isArray(modelParams.phi) && (
+                        <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                          <div className="flex flex-col gap-2">
+                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">Full φ_d: [3,7,31,12,19,5,11,13,17,23,29,31]</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">+8 bits truncation active</span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {snapshotData && snapshotData.lines && snapshotData.lines.length > 0 && (
+                        <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                          <div className="flex flex-col gap-2">
+                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">Oscillation Stats:</span>
+                            <div className="flex flex-wrap gap-2">
+                              {snapshotData.lines.slice(0, 6).map((line, idx) => (
+                                <div key={idx} className="text-xs font-mono text-gray-900 dark:text-white bg-purple-100 dark:bg-purple-900/30 px-3 py-2 rounded flex flex-col gap-1">
+                                  <span className="font-semibold">L{idx+1}[{line.triad.join('-')}]</span>
+                                  <span className="text-gray-600 dark:text-gray-400">zc={line.zeroCrossings}, tp={line.turningPoints}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : projectionModel === 'lattice' ? (
                     <>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                         <div className="flex items-center gap-2">
@@ -2338,9 +2816,10 @@ function Projection() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                  {projectionModel === 'lattice' ? 'About 12-Fold Lattice Model' : 
+                  {projectionModel === 'primetetration' ? 'About Prime Tetration Projections' :
+                   projectionModel === 'lattice' ? 'About 12-Fold Lattice Model' : 
                    projectionModel === 'montecarlo' ? 'About Monte Carlo Simulation' : 
-                   'About Linear Regression Model'}
+                   'About 12-Fold Lattice Model'}
                 </span>
               </div>
               <svg
@@ -2355,11 +2834,13 @@ function Projection() {
             {showModelInfo && (
               <div className="p-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
                 <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
-                  {projectionModel === 'lattice' 
+                  {projectionModel === 'primetetration'
+                    ? 'Prime Tetration Projections use the full crystalline 12-dimensional lattice with triadic prime exponentiation towers. Each projection line represents a different prime triad [p1,p2,p3] with amplitude A = base^(p2^p3) mod 2^72. The lattice oscillator Z(n) aggregates all 12 φ_d dimensions without dimension sweeping. All calculations use Q8 fixed-point truncation (+8 guard bits).'
+                    : projectionModel === 'lattice' 
                     ? 'Projections use the 12-Fold Crystalline Periodic Lattice Model with Z_n^(d), L(n,d,k,λ), and Γ(n,d) functions. This model incorporates prime number theory, entropy calculations, FFT-based oscillation detection, and dimensional frequencies φ_i = [3,7,31,12,19,5,11,13,17,23,29,31].'
                     : projectionModel === 'montecarlo'
                     ? 'Projections use Monte Carlo simulation with 10,000 iterations. The model calculates historical returns, estimates mean return and volatility, and simulates multiple price paths using normal distribution. The expected value is calculated from the mean of all simulated paths.'
-                    : 'Projections are based on linear regression analysis of historical data and are for informational purposes only. Past performance does not guarantee future results.'}
+                    : 'Projections use the 12-Fold Crystalline Periodic Lattice Model. This model incorporates prime number theory, entropy calculations, FFT-based oscillation detection, and dimensional frequencies φ_i = [3,7,31,12,19,5,11,13,17,23,29,31].'}
                 </p>
               </div>
             )}
