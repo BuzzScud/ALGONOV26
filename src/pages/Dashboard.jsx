@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchYahooFinance } from '../services/monitorService';
+import { calculateUniversalDayNumber, getNumerologyForecast } from '../utils/numerology';
 
 // Helper function to check if US market is currently open
 const isMarketOpen = () => {
@@ -42,6 +43,7 @@ const getMarketState = (meta, fallbackToTimeCheck = true) => {
   
   return 'UNKNOWN';
 };
+
 
 // Helper function to get current stock price
 const getStockPrice = async (symbol) => {
@@ -123,6 +125,21 @@ const getStockPrice = async (symbol) => {
     // Determine market state with fallback to time-based check
     const marketState = getMarketState(meta, true);
     
+    // Get volume data
+    let volume = 0;
+    if (meta.regularMarketVolume && meta.regularMarketVolume > 0) {
+      volume = meta.regularMarketVolume;
+    } else if (quotes && quotes.volume && quotes.volume.length > 0) {
+      // Get the most recent non-null volume
+      for (let i = quotes.volume.length - 1; i >= 0; i--) {
+        const vol = quotes.volume[i];
+        if (vol !== null && vol !== undefined && vol > 0) {
+          volume = vol;
+          break;
+        }
+      }
+    }
+    
     return {
       symbol,
       price: currentPrice,
@@ -130,6 +147,7 @@ const getStockPrice = async (symbol) => {
       changePercent,
       previousClose: previousClose,
       marketState: marketState,
+      volume: volume,
     };
   } catch (error) {
     console.error(`Error fetching ${symbol}:`, error);
@@ -144,6 +162,7 @@ const getStockPrice = async (symbol) => {
       changePercent: 0,
       previousClose: 0,
       marketState: marketState,
+      volume: 0,
       error: error.message || 'Invalid data format',
     };
   }
@@ -181,6 +200,24 @@ function WorldClock({ timezone, city, country }) {
                   formatted.find(p => p.type === 'day').value + ', ' + 
                   formatted.find(p => p.type === 'year').value;
 
+  // Calculate numerology for the date in this timezone
+  // Extract date components from the formatted parts
+  const monthName = formatted.find(p => p.type === 'month').value;
+  const day = parseInt(formatted.find(p => p.type === 'day').value);
+  const year = parseInt(formatted.find(p => p.type === 'year').value);
+  
+  // Convert month name to number (Jan=1, Feb=2, etc.)
+  const monthMap = {
+    'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
+    'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
+  };
+  const month = monthMap[monthName] || 1;
+  
+  // Create a date object for numerology calculation
+  const localDate = new Date(year, month - 1, day);
+  const universalDayNumber = calculateUniversalDayNumber(localDate);
+  const forecast = getNumerologyForecast(universalDayNumber);
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
       <div className="text-center">
@@ -189,9 +226,56 @@ function WorldClock({ timezone, city, country }) {
         <div className="text-3xl font-bold text-gray-900 dark:text-white mb-2 font-mono">
           {timeStr}
         </div>
-        <div className="text-sm text-gray-600 dark:text-gray-400">
+        <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
           {dateStr}
         </div>
+        
+        {/* Daily Global Numerology Forecast */}
+        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <span className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+              {forecast.number}
+            </span>
+            <span className="text-sm font-semibold text-gray-900 dark:text-white">
+              {forecast.title}
+            </span>
+          </div>
+          <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+            {forecast.description}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Volume Tooltip Component
+function VolumeTooltip({ volume, symbol }) {
+  if (!volume || volume === 0) {
+    return null;
+  }
+
+  // Format volume with appropriate suffix
+  const formatVolume = (vol) => {
+    if (vol >= 1000000000) {
+      return `${(vol / 1000000000).toFixed(2)}B`;
+    } else if (vol >= 1000000) {
+      return `${(vol / 1000000).toFixed(2)}M`;
+    } else if (vol >= 1000) {
+      return `${(vol / 1000).toFixed(2)}K`;
+    }
+    return vol.toLocaleString();
+  };
+
+  return (
+    <div className="absolute z-50 w-56 p-4 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 bottom-full left-1/2 transform -translate-x-1/2 mb-3">
+      <div className="text-xs font-semibold mb-2 text-gray-500 dark:text-gray-400 uppercase tracking-wide">{symbol} Volume</div>
+      <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{formatVolume(volume)}</div>
+      <div className="text-xs text-gray-600 dark:text-gray-400">Total shares traded</div>
+      {/* Arrow pointing down */}
+      <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-px">
+        <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-white dark:border-t-gray-800"></div>
+        <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-gray-200 dark:border-t-gray-700 absolute top-[1px]"></div>
       </div>
     </div>
   );
@@ -201,7 +285,7 @@ function WorldClock({ timezone, city, country }) {
 function StockInfoCard({ symbol, data, loading, onRemove }) {
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+      <div className="relative group bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{symbol}</h3>
           <div className="flex items-center gap-2">
@@ -227,7 +311,7 @@ function StockInfoCard({ symbol, data, loading, onRemove }) {
 
   if (data?.error || data?.price === null) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+      <div className="relative group bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{symbol}</h3>
           <div className="flex items-center gap-2">
@@ -257,7 +341,7 @@ function StockInfoCard({ symbol, data, loading, onRemove }) {
 
   if (!data) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+      <div className="relative group bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{symbol}</h3>
           {onRemove && (
@@ -313,7 +397,12 @@ function StockInfoCard({ symbol, data, loading, onRemove }) {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+    <div className="relative group bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+      {/* Volume Tooltip */}
+      {data && data.volume > 0 && (
+        <VolumeTooltip volume={data.volume} symbol={symbol} />
+      )}
+      
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-xl font-bold text-gray-900 dark:text-white">{symbol}</h3>
         <div className="flex items-center gap-2">

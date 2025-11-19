@@ -1,3 +1,45 @@
+/**
+ * IMPROVED CRYSTALLINE PROJECTION ENGINE
+ * =======================================
+ * 
+ * Mathematical Enhancements Integrated from Research:
+ * 
+ * 1. Ψ(p,q) - Plimpton Triple Modulator
+ *    Formula: Ψ = (p² - q²)/(p² + q²)
+ *    Provides prime-based modulation for projection stability
+ * 
+ * 2. θ(i, Ψ, λ, ω) - Theta Step Function
+ *    Formula: θ = k·π·(1 - Ψ) + ν(λ)·(π/180) + Ω_phase(ω)
+ *    Combines Plimpton modulation, phonetic values, and cymatic frequencies
+ * 
+ * 3. g(i) - Recursive 3^θ Growth Step
+ *    Formula: g_i = g_{i-1} · 3^(θ/100) · (1 + τ/1000)
+ *    where τ = log(p1·p2·p3)/log(3)
+ *    Implements self-similar recursive growth
+ * 
+ * 4. 12-Sector Crystalline Lattice
+ *    - Each projection uses 12 sectors with quadrant-based polarity
+ *    - Möbius parity twist: Γ(k) = (-1)^k
+ *    - Phonetic modulation: ν(λ) maps dub=3, kubt=5, k'anch=7
+ *    - Omega phase gate: Ω(ω) for cymatic frequency integration (432Hz, 528Hz, etc.)
+ * 
+ * 5. Q8 Fixed-Point Arithmetic
+ *    - 72-bit modular arithmetic with 8 guard bits
+ *    - Precise amplitude calculations using modular exponentiation
+ *    - Prime exponentiation towers: base^(p1^(p2^p3)) using triadic prime sets
+ *    - NOT generic tetration (x^x^x), but specifically prime-based towers
+ * 
+ * 6. Projection Formula
+ *    For each step i in [0..N]:
+ *      - Calculate λ = lambdaSchedule[i mod len]
+ *      - Calculate ω = omegaSchedule[i mod len]
+ *      - Compute θ_i using Plimpton modulation
+ *      - Update g_i recursively with 3^θ growth
+ *      - Calculate lattice sum over 12 sectors with polarities
+ *      - Scale by depth (log(prime)/log(2)) and triad factor (τ)
+ *      - Projection: P_i = lastPrice + Δ_i
+ */
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Chart as ChartJS,
@@ -10,6 +52,7 @@ import {
   Legend,
   Filler,
 } from 'chart.js';
+import zoomPlugin from 'chartjs-plugin-zoom';
 import { Line } from 'react-chartjs-2';
 import { getPriceChartData } from '../services/monitorService';
 
@@ -21,14 +64,18 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  Filler
+  Filler,
+  zoomPlugin
 );
 
 // Dimensional frequencies φ_i (Phonon Correction) - Full crystalline 12-d set
+// Primarily uses primes, with coprime exception: 12 is coprime to 5,7,11,13,17,19,23,29,31
+// (Similar to Enigma rotor configuration using 15 coprime to 3*5)
 const PHI_D = [3, 7, 31, 12, 19, 5, 11, 13, 17, 23, 29, 31];
 
-// Tetration depth constant
-const TETRATION_DEPTH = 31;
+// Prime Exponentiation Tower depth - MUST be prime
+// Used for prime tower calculations: base^(p1^(p2^p3)) where p1,p2,p3 are primes
+const TETRATION_DEPTH = 31; // 11th prime
 
 // Prime depth slider stops (tetration depth primes)
 const PRIME_STOPS = [11, 13, 17, 29, 31, 47, 59, 61, 97, 101];
@@ -41,6 +88,21 @@ const Q_FRAC_BITS = 8n; // +8 bits computations
 const OUTPUT_SCALE = 1n << 64n; // after truncation, map to 64-bit fractional space
 const Q8 = 1 << 8; // 256
 
+// Crystalline lattice constants
+const SECTORS = 12; // 12-sector lattice (crystalline basis)
+const TWO_PI = Math.PI * 2;
+const PHI_VEC = [3, 7, 31, 12, 19, 5, 11, 13, 17, 23, 29, 31]; // Full φ-vector
+
+// Lambda schedule (phonetic modulation)
+const LAMBDA_DEFAULT = ['dub', 'kubt', "k'anch", 'dub', 'kubt', "k'anch"];
+
+// Projection colors
+const COLORS = [
+  '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+  '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16',
+  '#06b6d4', '#a855f7', '#22c55e'
+];
+
 // Safe modular exponentiation: a^e mod m (BigInt)
 function modPow(a, e, m) {
   a = ((a % m) + m) % m;
@@ -51,6 +113,162 @@ function modPow(a, e, m) {
     e >>= 1n;
   }
   return result;
+}
+
+// Ψ(p, q) - Plimpton Triple Modulator
+// Computes (p² - q²) / (p² + q²) for prime pairs
+function psiPlimpton(p, q) {
+  const p2 = p * p;
+  const q2 = q * q;
+  return (p2 - q2) / (p2 + q2);
+}
+
+// Ψ(depth) - Compute psi from depth prime
+function psiFromDepth(depthPrime) {
+  // Use depthPrime and its neighbor for Plimpton modulation
+  const idx = PRIME_STOPS.indexOf(depthPrime);
+  if (idx === -1) return psiPlimpton(depthPrime, depthPrime - 2);
+  const p = depthPrime;
+  const q = idx > 0 ? PRIME_STOPS[idx - 1] : 2;
+  return psiPlimpton(p, q);
+}
+
+// ν(λ) - Phonetic value mapping
+function nuLambda(lambda) {
+  if (lambda === 'dub') return 3;
+  if (lambda === 'kubt') return 5;
+  if (lambda === "k'anch") return 7;
+  if (typeof lambda === 'number') return lambda;
+  return 3; // default
+}
+
+// Ω(ω) - Omega gate (cymatic frequency phase)
+function omegaGate(omegaHz) {
+  // Map Hz to phase angle
+  // 432 Hz → 0°, 528 Hz → 90°, etc.
+  const baseFreq = 432;
+  const ratio = omegaHz / baseFreq;
+  const phase = (Math.log(ratio) / Math.log(2)) * (Math.PI / 2);
+  return { phase, magnitude: Math.sqrt(ratio) };
+}
+
+// ω(i) - Omega schedule at step i
+function omegaAt(i, schedule) {
+  if (Array.isArray(schedule)) {
+    return schedule[i % schedule.length];
+  }
+  return schedule; // single value
+}
+
+// θ(i, Ψ, λ, ω) - Theta step function
+function thetaStep(i, psi, lambda, omegaHz) {
+  const k = i;
+  const { phase: omegaPhase } = omegaGate(omegaHz);
+  const nuVal = nuLambda(lambda);
+  // θ = k·π·(1 - Ψ) + ν·(π/180) + Ω_phase
+  return k * Math.PI * (1 - psi) + nuVal * (Math.PI / 180) + omegaPhase;
+}
+
+// g(i) - Recursive 3^θ growth step
+function growthStep(gPrev, theta, omegaHz, triad) {
+  // g_i = g_{i-1} · 3^(θ/100) · (1 + τ/1000)
+  // where τ = log(p1·p2·p3) / log(3)
+  const triProd = triad.slice(0, 3).reduce((a, b) => a * b, 1);
+  const tau = Math.log(triProd) / Math.log(3);
+  const exponent = theta / 100;
+  const base3Term = Math.pow(3, exponent);
+  const tauTerm = 1 + tau / 1000;
+  return gPrev * base3Term * tauTerm;
+}
+
+// Γ(k) - Möbius parity twist
+function mobiusParity(k) {
+  return Math.pow(-1, k);
+}
+
+// Truncate to Q8 precision
+function trunc(x, decimals) {
+  const multiplier = Math.pow(10, decimals);
+  return Math.floor(x * multiplier) / multiplier;
+}
+
+// ==================== IMPROVED PROJECTION ENGINE ====================
+// Compute projection using crystalline lattice with 12 sectors
+function computeCrystallineProjection({
+  lastPrice,
+  depthPrime,
+  omegaHz = 432,
+  triad = [2, 5, 7],
+  decimals = 8,
+  lambdaSchedule = LAMBDA_DEFAULT,
+  omegaSchedule = null,
+  N = 120
+}) {
+  const psi = psiFromDepth(depthPrime);
+  const triProd = triad.slice(0, 3).reduce((a, b) => a * b, 1);
+  const tau = Math.log(triProd) / Math.log(3);
+  
+  // Initialize growth factor
+  let g = 1 + 0.01 * tau + 0.001 * (depthPrime % 7);
+  
+  const points = [];
+  
+  for (let i = 0; i < N; i++) {
+    // Get lambda and omega for this step
+    const lambda = lambdaSchedule[i % lambdaSchedule.length];
+    const wHz = omegaAt(i, omegaSchedule || omegaHz);
+    
+    // Calculate theta for this step
+    const theta_i = thetaStep(i, psi, lambda, wHz);
+    
+    // Update growth recursively
+    g = growthStep(g, theta_i, wHz, triad);
+    
+    // Calculate lattice sum across all 12 sectors
+    let latticeSum = 0;
+    
+    for (let s = 0; s < SECTORS; s++) {
+      // Base angle for this sector
+      const angleBase = (i) * (TWO_PI / SECTORS) + (s * TWO_PI / SECTORS);
+      
+      // Add φ-vector component for this sector
+      const phiTerm = (PHI_VEC[s] % 360) * (Math.PI / 180);
+      
+      // Add phonetic nudge
+      const nuVal = nuLambda(lambda);
+      const lambdaNudge = (nuVal % 3) * (Math.PI / 360);
+      
+      // Add omega phase
+      const { phase: omegaPhase } = omegaGate(wHz);
+      
+      // Calculate quadrant and polarities
+      const quadrant = Math.floor(s / 3);
+      const polQuad = ((quadrant % 2) === 0) ? 1 : -1; // Alternating quadrants
+      const polMob = ((i + s) % 2 === 0) ? 1 : -1; // Möbius twist
+      
+      // Complete angle
+      const ang = angleBase + phiTerm + lambdaNudge + 0.5 * omegaPhase;
+      
+      // Calculate term with all components
+      const base = Math.cos(ang);
+      const gNorm = Math.tanh(g / 1e5);
+      const term = base * polQuad * polMob * psi * (1 + 0.5 * gNorm);
+      
+      latticeSum += term;
+    }
+    
+    // Scale by depth and triad
+    const depthScale = Math.log(depthPrime) / Math.log(2);
+    const triScale = Math.max(1, tau);
+    const delta = trunc(latticeSum * depthScale * 0.5 * triScale, decimals);
+    
+    // Calculate price point
+    const pricePoint = trunc(lastPrice + delta, decimals);
+    
+    points.push({ x: i, y: pricePoint });
+  }
+  
+  return points;
 }
 
 // Compute triadic prime tower amplitude A = base^(p2^p3) mod 2^(64+8),
@@ -127,44 +345,66 @@ function generateTriadsAroundPrime(pDepth, count, primes) {
   return triads;
 }
 
-// Tetration function: ^(depth)x = x^(x^(x^...)) depth times
-// For depth 31, we use a logarithmic approach to compute tetration safely
+// Prime Exponentiation Tower: Compute base^(p1^(p2^(p3^...))) using triadic prime sets
+// This is NOT generic tetration (x^x^x), but specifically prime-based towers
+// Example: 2^(5^(7^11)) for triadic set [5,7,11]
+// The base is typically 2 or 3, and the tower is built from primes
+function primeExponentiationTower(base, primeTriad, useModular = true) {
+  if (!primeTriad || primeTriad.length === 0) return base;
+  
+  // For triadic sets [p1, p2, p3], compute base^(p1^(p2^p3))
+  // Build from the top down: p2^p3 first, then p1^result, then base^result
+  
+  if (useModular) {
+    // Use modular arithmetic for large towers to prevent overflow
+    // Compute using Euler's theorem and modular exponentiation
+    const [p1, p2, p3] = primeTriad;
+    
+    // First compute p2^p3 mod LAMBDA (for reduction)
+    const topExponent = modPow(BigInt(p2), BigInt(p3), LAMBDA);
+    
+    // Then compute p1^topExponent mod LAMBDA
+    const middleExponent = modPow(BigInt(p1), topExponent, LAMBDA);
+    
+    // Finally compute base^middleExponent mod MOD
+    const result = modPow(BigInt(base), middleExponent, MOD);
+    
+    // Convert to float in reasonable range
+    return Number(result) / Number(1n << 32n); // Scale down from 72-bit space
+  } else {
+    // Logarithmic method for non-modular computation
+    // log(base^(p1^(p2^p3))) = (p1^(p2^p3)) * log(base)
+    const [p1, p2, p3] = primeTriad;
+    
+    // Compute p2^p3 safely
+    let exponent = Math.log(p2) * p3; // log(p2^p3)
+    if (exponent > 100) exponent = 100; // Cap to prevent overflow
+    let p2ToPowerP3 = Math.exp(exponent);
+    if (p2ToPowerP3 > 1000) p2ToPowerP3 = 1000; // Cap
+    
+    // Compute p1^(p2^p3) safely
+    exponent = Math.log(p1) * p2ToPowerP3;
+    if (exponent > 700) exponent = 700; // Cap to prevent exp overflow
+    
+    // Final result: base^(p1^(p2^p3))
+    const finalResult = Math.exp(exponent * Math.log(base));
+    return isFinite(finalResult) ? finalResult : Number.MAX_SAFE_INTEGER;
+  }
+}
+
+// Legacy tetration wrapper - now uses prime exponentiation towers
+// This maintains backward compatibility while using proper prime towers
 function tetration(base, depth) {
-  if (depth <= 0) return 1;
-  if (depth === 1) return base;
-  if (base <= 0) return 0;
-  if (base === 1) return 1;
+  // Convert depth to a prime-based triadic set
+  // Use depth as index into PRIMES_500 to select triadic set
+  const primeIndex = Math.min(depth, PRIMES_500.length - 3);
+  const triad = [
+    PRIMES_500[primeIndex % PRIMES_500.length],
+    PRIMES_500[(primeIndex + 1) % PRIMES_500.length],
+    PRIMES_500[(primeIndex + 2) % PRIMES_500.length]
+  ];
   
-  // For depth 31, use iterated logarithm method
-  // log(^(n)x) = log(x) * log(^(n-1)x) for n > 1
-  if (depth >= 10) {
-    // Start with log of base
-    let logResult = Math.log(base);
-    
-    // Iterate logarithm depth-1 times
-    for (let i = 2; i < depth; i++) {
-      logResult = Math.log(base) * logResult;
-      // Cap to prevent overflow (exp(700) is near JS max)
-      if (logResult > 700) {
-        logResult = 700;
-        break;
-      }
-    }
-    
-    // Return exp of the final logarithm
-    const result = Math.exp(logResult);
-    return isFinite(result) ? result : Number.MAX_SAFE_INTEGER;
-  }
-  
-  // Direct recursive calculation for small depths
-  let result = base;
-  for (let i = 1; i < depth; i++) {
-    result = Math.pow(base, result);
-    if (!isFinite(result) || result > Number.MAX_SAFE_INTEGER) {
-      return Number.MAX_SAFE_INTEGER;
-    }
-  }
-  return result;
+  return primeExponentiationTower(base, triad, false);
 }
 
 // Helper: Check if number is prime
@@ -210,9 +450,9 @@ function calculateGamma(n, d, historicalPrices) {
   return Math.log2(Math.max(1, primeCount) / Math.max(1, entropy));
 }
 
-// ν(λ) - Phonetic Value with tetration depth 31
+// ν(λ) - Phonetic Value with prime exponentiation tower depth 31
 function calculateNu(lambda) {
-  // Use tetration depth 31: ^(31)3 then apply lambda
+  // Use prime tower depth 31: 3^(p1^(p2^p3)) where primes from PRIMES_500
   const tetrated = tetration(3, TETRATION_DEPTH);
   // Apply lambda as exponent to the tetrated result, then modulo 7
   return Math.pow(tetrated, lambda) % 7;
@@ -237,7 +477,7 @@ function calculateTheta(n, k, lambda, omega, psi) {
   return k * Math.PI * (1 - (lambda / (omega || 144000)) * goldenRatio);
 }
 
-// Z_n^(d) - The main lattice formula with tetration depth 31
+// Z_n^(d) - The main lattice formula with prime exponentiation tower depth 31
 function calculateZ(n, d) {
   if (d < 0 || d >= PHI_D.length) return 0;
   
@@ -245,9 +485,9 @@ function calculateZ(n, d) {
   const exponent = ((n - 1) * 2 * Math.PI / 12) / Math.log(3);
   const cosineArg = (n - 1) * 2 * Math.PI / 12 * phi_d;
   
-  // Use tetration depth 31: compute ^(31)3, then use its logarithm for scaling
+  // Use prime tower depth 31: compute 3^(p1^(p2^p3)), then use its logarithm for scaling
   const tetratedValue = tetration(3, TETRATION_DEPTH);
-  // Scale exponent by tetration depth factor: log(^(31)3) / log(3) / 31
+  // Scale exponent by prime tower depth factor: log(tower) / log(3) / 31
   const tetrationScale = Math.log(tetratedValue) / (Math.log(3) * TETRATION_DEPTH);
   const scaledExponent = exponent * tetrationScale;
   const baseValue = Math.pow(3, scaledExponent);
@@ -255,7 +495,7 @@ function calculateZ(n, d) {
   return baseValue * Math.cos(cosineArg);
 }
 
-// P_n^(d)(k) - Projection function with tetration depth 31
+// P_n^(d)(k) - Projection function with prime exponentiation tower depth 31
 function calculateP(n, d, k, historicalPrices) {
   if (d < 0 || d >= PHI_D.length) return 0;
   
@@ -263,9 +503,9 @@ function calculateP(n, d, k, historicalPrices) {
   const theta = calculateTheta(n, k, 0, 144000, 0);
   const exponent = theta / Math.log(12) - Math.log(3);
   
-  // Use tetration depth 31: compute ^(31)12, then use its logarithm for scaling
+  // Use prime tower depth 31: compute 12^(p1^(p2^p3)), then use its logarithm for scaling
   const tetratedValue = tetration(12, TETRATION_DEPTH);
-  // Scale exponent by tetration depth factor: log(^(31)12) / log(12) / 31
+  // Scale exponent by prime tower depth factor: log(tower) / log(12) / 31
   const tetrationScale = Math.log(tetratedValue) / (Math.log(12) * TETRATION_DEPTH);
   const scaledExponent = exponent * tetrationScale;
   const baseTerm = Math.pow(12, scaledExponent);
@@ -279,15 +519,15 @@ function calculateP(n, d, k, historicalPrices) {
   return baseTerm * product;
 }
 
-// L(n, d, k, λ) - Lattice Output function with tetration depth 31
+// L(n, d, k, λ) - Lattice Output function with prime exponentiation tower depth 31
 function calculateL(n, d, k, lambda, historicalPrices) {
   if (d < 0 || d >= PHI_D.length) return 0;
   
   const theta = calculateTheta(n, k, lambda, 144000, 0);
   
-  // Use tetration depth 31: compute ^(31)3, then use its logarithm for scaling
+  // Use prime tower depth 31: compute 3^(p1^(p2^p3)), then use its logarithm for scaling
   const tetratedValue = tetration(3, TETRATION_DEPTH);
-  // Scale theta by tetration depth factor: log(^(31)3) / log(3) / 31
+  // Scale theta by prime tower depth factor: log(tower) / log(3) / 31
   const tetrationScale = Math.log(tetratedValue) / (Math.log(3) * TETRATION_DEPTH);
   const scaledTheta = theta * tetrationScale;
   const threeToTheta = Math.pow(3, scaledTheta);
@@ -708,11 +948,11 @@ function detectPriceJump(historicalPrices, projections, jumpThreshold = 0.05) {
   return false;
 }
 
-// Recursive self-similar lattice calculation at depth level with tetration depth 31 at every layer
+// Recursive self-similar lattice calculation at depth level with prime tower depth 31 at every layer
 function recursiveLatticeLayer(n, d, k, lambda, depth, maxDepth, effectivePrimes, historicalPrices) {
   if (depth > maxDepth) return 1;
   
-  // Apply tetration depth 31 at EVERY recursive layer (self-similar structure)
+  // Apply prime exponentiation tower depth 31 at EVERY recursive layer (self-similar structure)
   const tetrated3 = tetration(3, TETRATION_DEPTH);
   
   // Self-similar scaling factor based on depth (fractal structure)
@@ -723,7 +963,7 @@ function recursiveLatticeLayer(n, d, k, lambda, depth, maxDepth, effectivePrimes
   // Apply self-similar scaling at this depth
   const theta = baseTheta * depthScale;
   
-  // Apply tetration depth 31 scaling at THIS layer (recursive application)
+  // Apply prime tower depth 31 scaling at THIS layer (recursive application)
   const tetrationScale3 = Math.log(tetrated3) / (Math.log(3) * TETRATION_DEPTH);
   const scaledTheta = theta * tetrationScale3;
   const threeToTheta = Math.pow(3, scaledTheta);
@@ -738,16 +978,16 @@ function recursiveLatticeLayer(n, d, k, lambda, depth, maxDepth, effectivePrimes
     
     // Recursively calculate next layer if not at max depth (self-similar recursion)
     if (depth < maxDepth) {
-      // Each recursive layer also applies tetration depth 31
+      // Each recursive layer also applies prime tower depth 31
       const recursiveLayer = recursiveLatticeLayer(n, d, k, lambda, depth + 1, maxDepth, effectivePrimes, historicalPrices);
       // Multiply by recursive contribution (self-similar structure)
       cosineProduct *= recursiveLayer;
     }
   }
   
-  // Apply gamma and nu with tetration depth 31
+  // Apply gamma and nu with prime tower depth 31
   const gammaK = calculateMobiusGamma(k);
-  const nuLambda = calculateNu(lambda); // This already uses tetration depth 31
+  const nuLambda = calculateNu(lambda); // This already uses prime tower depth 31
   const gammaND = calculateGamma(n, d, historicalPrices);
   
   // Combine with recursive self-similar structure
@@ -815,7 +1055,7 @@ function calculateAdvancedProjection(historicalPrices, projectionSteps, stabiliz
           const phaseShift = stepIteration * Math.PI / (2 * maxStepIterations);
           const oscillationPhase = Math.sin(phaseShift) * 0.1; // Small oscillation component
           
-          // Z calculation with tetration depth 31 at every layer
+          // Z calculation with prime tower depth 31 at every layer
           const exponent = ((n_new - 1) * 2 * Math.PI / 12) / Math.log(3);
           const cosineArg = (n_new - 1) * 2 * Math.PI / 12 * phi_d + oscillationPhase;
           const tetratedValue = tetration(3, TETRATION_DEPTH);
@@ -835,7 +1075,7 @@ function calculateAdvancedProjection(historicalPrices, projectionSteps, stabiliz
             lSum += recursiveL;
           }
           
-          // P function with tetration depth 31
+          // P function with prime tower depth 31
           // Add iteration-based modulation for oscillations
           const thetaBase = calculateTheta(n_new, step, 0, 144000, 0);
           const theta = thetaBase + oscillationPhase * phi_d; // Modulate theta with oscillation
@@ -1063,7 +1303,17 @@ function calculateMonteCarloProjection(historicalPrices, projectionSteps, simula
 }
 
 // Prime Tetration Projection using multiple triads (11-13 projection lines)
-function calculatePrimeTetrationProjection(historicalPrices, horizon, base, triads, beta = 0.01) {
+function calculatePrimeTetrationProjection(
+  historicalPrices, 
+  horizon, 
+  base, 
+  triads, 
+  beta = 0.01,
+  depthPrime = 31,
+  baseOmegaHz = 432,
+  useLambdaSchedule = true,
+  useOmegaSchedule = false
+) {
   if (historicalPrices.length < 2) {
     return { lines: [] };
   }
@@ -1071,49 +1321,102 @@ function calculatePrimeTetrationProjection(historicalPrices, horizon, base, tria
   const lastPrice = historicalPrices[historicalPrices.length - 1];
   const lines = [];
 
-  // Build projections for each triad
+  // Build projections for each triad using improved crystalline engine
   for (let li = 0; li < triads.length; li++) {
     const triad = triads[li];
     const A72 = amplitudeFromTriad(base, triad);
     const aSym = amplitudeToSymmetric(A72); // [-1,1)
 
-    // Compute ΔP(n) & projection P̂(n)
-    let p = lastPrice;
-    const q8Points = [];
-    let prev = null;
-    let zeroCross = 0;
-    let extrema = 0;
-
-    for (let n = 1; n <= horizon; n++) {
-      const Z = latticeOscillatorZ(n);
-      const delta = beta * aSym * Z; // small fractional change
-      p = p * (1 + delta);
-      const q8 = toQ8(p);
-      q8Points.push(q8);
-
-      // Oscillation stats (zero-cross of Z and turning points on delta)
-      if (n > 1) {
+    // Use the improved crystalline projection engine
+    // Vary omega for each projection if schedule is enabled
+    const omegaHz = useOmegaSchedule 
+      ? baseOmegaHz + (li * 96)  // 432, 528, 624, 720, ...
+      : baseOmegaHz;              // Fixed frequency
+    const decimals = 8;
+    
+    try {
+      const projectionPoints = computeCrystallineProjection({
+        lastPrice,
+        depthPrime,
+        omegaHz,
+        triad,
+        decimals,
+        lambdaSchedule: useLambdaSchedule ? LAMBDA_DEFAULT : ['dub'],
+        omegaSchedule: useOmegaSchedule ? [432, 528, 432, 528] : null,
+        N: horizon
+      });
+      
+      // Extract prices from points
+      const prices = projectionPoints.map(pt => pt.y);
+      const q8Points = prices.map(toQ8);
+      
+      // Calculate oscillation stats
+      let zeroCross = 0;
+      let extrema = 0;
+      
+      for (let n = 1; n < prices.length; n++) {
+        const Z = latticeOscillatorZ(n);
         const prevZ = latticeOscillatorZ(n - 1);
-        if ((Z > 0 && prevZ <= 0) || (Z < 0 && prevZ >= 0)) zeroCross++;
-        if (prev != null) {
-          const prevDelta = (p - prev) / Math.max(prev, 1e-9);
-          const currDelta = delta;
-          // crude turning point when sign of change in delta flips
-          if (Math.sign(prevDelta) !== Math.sign(currDelta)) extrema++;
+        
+        // Zero crossings
+        if ((Z > 0 && prevZ <= 0) || (Z < 0 && prevZ >= 0)) {
+          zeroCross++;
+        }
+        
+        // Turning points (local extrema)
+        if (n > 1 && n < prices.length - 1) {
+          const prev = prices[n - 1];
+          const curr = prices[n];
+          const next = prices[n + 1];
+          
+          if ((curr > prev && curr > next) || (curr < prev && curr < next)) {
+            extrema++;
+          }
         }
       }
-      prev = p;
-    }
 
-    lines.push({
-      triad, // [p1, p2, p3]
-      base, // 2 or 3
-      aQ8: (A72 >> Q_FRAC_BITS).toString(), // truncated amplitude
-      pointsQ8: q8Points, // projected prices in Q8 integers
-      points: q8Points.map(fromQ8), // convert back to float for display
-      zeroCrossings: zeroCross,
-      turningPoints: extrema
-    });
+      lines.push({
+        triad, // [p1, p2, p3]
+        base, // 2 or 3
+        aQ8: (A72 >> Q_FRAC_BITS).toString(), // truncated amplitude
+        pointsQ8: q8Points, // projected prices in Q8 integers
+        points: prices, // float prices for display
+        zeroCrossings: zeroCross,
+        turningPoints: extrema,
+        omega: omegaHz, // Store omega used for this projection
+        depthPrime // Store depth prime used
+      });
+    } catch (err) {
+      console.error(`Failed to compute crystalline projection for triad ${triad}:`, err);
+      // Fallback to simple projection
+      let p = lastPrice;
+      const q8Points = [];
+      let zeroCross = 0;
+      let extrema = 0;
+
+      for (let n = 1; n <= horizon; n++) {
+        const Z = latticeOscillatorZ(n);
+        const delta = beta * aSym * Z;
+        p = p * (1 + delta);
+        const q8 = toQ8(p);
+        q8Points.push(q8);
+
+        if (n > 1) {
+          const prevZ = latticeOscillatorZ(n - 1);
+          if ((Z > 0 && prevZ <= 0) || (Z < 0 && prevZ >= 0)) zeroCross++;
+        }
+      }
+
+      lines.push({
+        triad,
+        base,
+        aQ8: (A72 >> Q_FRAC_BITS).toString(),
+        pointsQ8: q8Points,
+        points: q8Points.map(fromQ8),
+        zeroCrossings: zeroCross,
+        turningPoints: extrema
+      });
+    }
   }
 
   return {
@@ -1215,6 +1518,9 @@ function Projection() {
   const [projectionCount, setProjectionCount] = useState(12); // Default 12 projections
   const [snapshotData, setSnapshotData] = useState(null); // Stores snapshot with multiple lines
   const [beta, setBeta] = useState(0.01); // Calibration factor
+  const [omegaHz, setOmegaHz] = useState(432); // Cymatic frequency (432Hz default)
+  const [useOmegaSchedule, setUseOmegaSchedule] = useState(false); // Toggle omega schedule
+  const [useLambdaSchedule, setUseLambdaSchedule] = useState(true); // Toggle lambda schedule
   const inputRef = useRef(null);
   const chartDataRef = useRef(null);
   const historicalPricesRef = useRef(null);
@@ -1259,6 +1565,27 @@ function Projection() {
             }
             return '';
           },
+        },
+      },
+      zoom: {
+        zoom: {
+          wheel: {
+            enabled: true,
+            speed: 0.1,
+          },
+          pinch: {
+            enabled: true,
+          },
+          mode: 'xy',
+        },
+        pan: {
+          enabled: true,
+          mode: 'xy',
+          modifierKey: null,
+        },
+        limits: {
+          x: { min: 'original', max: 'original' },
+          y: { min: 'original', max: 'original' },
         },
       },
     },
@@ -1396,7 +1723,17 @@ function Projection() {
         try {
           const depthPrime = PRIME_STOPS[primeDepthIndex] || 31;
           const triads = generateTriadsAroundPrime(depthPrime, projectionCount, PRIMES_500);
-          const snapshotResult = calculatePrimeTetrationProjection(historicalPrices, stepsToUse, base, triads, beta);
+          const snapshotResult = calculatePrimeTetrationProjection(
+            historicalPrices, 
+            stepsToUse, 
+            base, 
+            triads, 
+            beta, 
+            depthPrime, 
+            omegaHz,
+            useLambdaSchedule,
+            useOmegaSchedule
+          );
           snapshotResult.symbol = symbol.toUpperCase().trim();
           setSnapshotData(snapshotResult);
           
@@ -2345,6 +2682,65 @@ function Projection() {
                   }}
                   className="w-full sm:w-32 px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white transition-all text-sm font-medium"
                 />
+              </div>
+              <div className="flex-1">
+                <label htmlFor="omegaHz" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Ω (Omega Hz)
+                </label>
+                <select
+                  id="omegaHz"
+                  value={omegaHz}
+                  onChange={(e) => {
+                    setOmegaHz(parseInt(e.target.value, 10));
+                    if (chartData) {
+                      setTimeout(() => loadChartData(), 100);
+                    }
+                  }}
+                  className="w-full sm:w-32 px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white transition-all text-sm font-medium"
+                >
+                  <option value={432}>432 Hz</option>
+                  <option value={528}>528 Hz</option>
+                  <option value={639}>639 Hz</option>
+                  <option value={741}>741 Hz</option>
+                </select>
+              </div>
+            </div>
+          )}
+          {projectionModel === 'primetetration' && (
+            <div className="flex flex-wrap gap-4 mt-3 items-center">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="useLambdaSchedule"
+                  checked={useLambdaSchedule}
+                  onChange={(e) => {
+                    setUseLambdaSchedule(e.target.checked);
+                    if (chartData) {
+                      setTimeout(() => loadChartData(), 100);
+                    }
+                  }}
+                  className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 dark:focus:ring-purple-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                />
+                <label htmlFor="useLambdaSchedule" className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Use λ Schedule (dub, kubt, k'anch)
+                </label>
+              </div>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="useOmegaSchedule"
+                  checked={useOmegaSchedule}
+                  onChange={(e) => {
+                    setUseOmegaSchedule(e.target.checked);
+                    if (chartData) {
+                      setTimeout(() => loadChartData(), 100);
+                    }
+                  }}
+                  className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 dark:focus:ring-purple-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                />
+                <label htmlFor="useOmegaSchedule" className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Use Ω Schedule (vary frequencies)
+                </label>
               </div>
             </div>
           )}

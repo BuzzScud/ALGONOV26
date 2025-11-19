@@ -18,11 +18,13 @@
     "chart.js": "^4.5.1",
     "chartjs-chart-financial": "^0.2.1",
     "chartjs-plugin-zoom": "^2.2.0",
+    "pdfjs-dist": "^5.4.394",
     "postcss": "^8.5.6",
     "preline": "^3.2.3",
     "react": "^19.2.0",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "^19.2.0",
+    "react-pdf": "^10.2.0",
     "react-router-dom": "^7.9.6"
   },
   "devDependencies": {
