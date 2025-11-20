@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { fetchYahooFinance } from '../services/monitorService';
 import { calculateUniversalDayNumber, getNumerologyForecast } from '../utils/numerology';
 
@@ -168,7 +171,114 @@ const getStockPrice = async (symbol) => {
   }
 };
 
-// World Clock Component
+// Sortable World Clock Component
+function SortableWorldClock({ id, timezone, city, country }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+
+  const formatted = formatter.formatToParts(time);
+  const timeStr = formatted.find(p => p.type === 'hour').value + ':' + 
+                  formatted.find(p => p.type === 'minute').value + ':' + 
+                  formatted.find(p => p.type === 'second').value + ' ' + 
+                  formatted.find(p => p.type === 'dayPeriod').value;
+  const dateStr = formatted.find(p => p.type === 'month').value + ' ' + 
+                  formatted.find(p => p.type === 'day').value + ', ' + 
+                  formatted.find(p => p.type === 'year').value;
+
+  // Calculate numerology for the date in this timezone
+  // Extract date components from the formatted parts
+  const monthName = formatted.find(p => p.type === 'month').value;
+  const day = parseInt(formatted.find(p => p.type === 'day').value);
+  const year = parseInt(formatted.find(p => p.type === 'year').value);
+  
+  // Convert month name to number (Jan=1, Feb=2, etc.)
+  const monthMap = {
+    'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
+    'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
+  };
+  const month = monthMap[monthName] || 1;
+  
+  // Create a date object for numerology calculation
+  const localDate = new Date(year, month - 1, day);
+  const universalDayNumber = calculateUniversalDayNumber(localDate);
+  const forecast = getNumerologyForecast(universalDayNumber);
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 cursor-move touch-none"
+      {...attributes}
+      {...listeners}
+    >
+      <div className="text-center">
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+          </svg>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{city}</h3>
+        </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{country}</p>
+        <div className="text-3xl font-bold text-gray-900 dark:text-white mb-2 font-mono">
+          {timeStr}
+        </div>
+        <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          {dateStr}
+        </div>
+        
+        {/* Daily Global Numerology Forecast */}
+        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <span className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+              {forecast.number}
+            </span>
+            <span className="text-sm font-semibold text-gray-900 dark:text-white">
+              {forecast.title}
+            </span>
+          </div>
+          <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+            {forecast.description}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// World Clock Component (non-sortable, for backwards compatibility)
 function WorldClock({ timezone, city, country }) {
   const [time, setTime] = useState(new Date());
 
@@ -249,6 +359,48 @@ function WorldClock({ timezone, city, country }) {
   );
 }
 
+// Sortable Section Component
+function SortableSection({ id, children }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="relative mb-8"
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className="absolute -top-2 left-0 right-0 h-8 cursor-move touch-none flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity z-10 group"
+      >
+        <div className="bg-gray-200 dark:bg-gray-700 rounded-full px-3 py-1 flex items-center gap-2">
+          <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+          </svg>
+          <span className="text-xs text-gray-500 dark:text-gray-400">Drag to reorder section</span>
+        </div>
+      </div>
+      <div className="pt-2">
+        {children}
+      </div>
+    </div>
+  );
+}
+
 // Volume Tooltip Component
 function VolumeTooltip({ volume, symbol }) {
   if (!volume || volume === 0) {
@@ -276,6 +428,254 @@ function VolumeTooltip({ volume, symbol }) {
       <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-px">
         <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-white dark:border-t-gray-800"></div>
         <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-gray-200 dark:border-t-gray-700 absolute top-[1px]"></div>
+      </div>
+    </div>
+  );
+}
+
+// Sortable Stock Info Card Component
+function SortableStockCard({ id, symbol, data, loading, onRemove }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  if (loading) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="relative group bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 cursor-move touch-none"
+        {...attributes}
+        {...listeners}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+            </svg>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{symbol}</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-200 border-t-blue-600"></div>
+            {onRemove && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemove();
+                }}
+                className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                title="Remove symbol"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+        <p className="text-gray-500 dark:text-gray-400 text-sm">Loading...</p>
+      </div>
+    );
+  }
+
+  if (data?.error || data?.price === null) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="relative group bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 cursor-move touch-none"
+        {...attributes}
+        {...listeners}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+            </svg>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{symbol}</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 rounded">
+              Error
+            </span>
+            {onRemove && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemove();
+                }}
+                className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                title="Remove symbol"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+        <p className="text-gray-500 dark:text-gray-400 text-sm">
+          {data?.error || 'Unable to fetch data'}
+        </p>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="relative group bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 cursor-move touch-none"
+        {...attributes}
+        {...listeners}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+            </svg>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{symbol}</h3>
+          </div>
+          {onRemove && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove();
+              }}
+              className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+              title="Remove symbol"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+        <p className="text-gray-500 dark:text-gray-400 text-sm">No data available</p>
+      </div>
+    );
+  }
+
+  const isPositive = data.change >= 0;
+  
+  // DXY and VIX don't use dollar signs
+  const isIndex = symbol === 'DXY' || symbol === 'VIX';
+  const pricePrefix = isIndex ? '' : '$';
+  
+  // Determine market status with better logic
+  let marketStatus = 'Closed';
+  let statusColor = 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300';
+  
+  if (data.marketState === 'REGULAR') {
+    marketStatus = 'Open';
+    statusColor = 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400';
+  } else if (data.marketState === 'PRE' || data.marketState === 'PREPRE') {
+    marketStatus = 'Pre-Market';
+    statusColor = 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400';
+  } else if (data.marketState === 'POST' || data.marketState === 'POSTPOST') {
+    marketStatus = 'After Hours';
+    statusColor = 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-400';
+  } else if (data.marketState === 'CLOSED') {
+    marketStatus = 'Closed';
+    statusColor = 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300';
+  } else {
+    // Fallback: check if market should be open based on time
+    const marketOpen = isMarketOpen();
+    if (marketOpen) {
+      marketStatus = 'Open';
+      statusColor = 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400';
+    } else {
+      marketStatus = 'Closed';
+      statusColor = 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300';
+    }
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="relative group bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 cursor-move touch-none"
+      {...attributes}
+      {...listeners}
+    >
+      {/* Volume Tooltip */}
+      {data && data.volume > 0 && (
+        <VolumeTooltip volume={data.volume} symbol={symbol} />
+      )}
+      
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+          </svg>
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white">{symbol}</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`text-xs px-2 py-1 rounded ${statusColor}`}>
+            {marketStatus}
+          </span>
+          {onRemove && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove();
+              }}
+              className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+              title="Remove symbol"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+      
+      <div className="mb-4">
+        <p className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          {pricePrefix}{data.price.toFixed(2)}
+        </p>
+        <div className="flex items-center gap-2">
+          <span className={`text-lg font-semibold ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+            {data.change !== 0 ? (
+              `${isPositive ? '+' : ''}${pricePrefix}${Math.abs(data.change).toFixed(2)}`
+            ) : (
+              `${pricePrefix}0.00`
+            )}
+          </span>
+          <span className={`text-lg font-semibold ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+            {data.changePercent !== 0 ? (
+              `(${isPositive ? '+' : ''}${Math.abs(data.changePercent).toFixed(2)}%)`
+            ) : (
+              '(0.00%)'
+            )}
+          </span>
+        </div>
+      </div>
+
+      <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-gray-500 dark:text-gray-400">Previous Close</span>
+          <span className="text-gray-900 dark:text-white font-medium">
+            {pricePrefix}{(data.previousClose || (data.price - data.change)).toFixed(2)}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -467,6 +867,17 @@ function Dashboard() {
     { display: 'VIX', api: '^VIX' },
   ];
 
+  // Default world clocks
+  const defaultWorldClocks = [
+    { id: 'clock-ny', timezone: 'America/New_York', city: 'New York', country: 'United States' },
+    { id: 'clock-london', timezone: 'Europe/London', city: 'London', country: 'United Kingdom' },
+    { id: 'clock-tokyo', timezone: 'Asia/Tokyo', city: 'Tokyo', country: 'Japan' },
+    { id: 'clock-sydney', timezone: 'Australia/Sydney', city: 'Sydney', country: 'Australia' },
+  ];
+
+  // Default section order
+  const defaultSectionOrder = ['world-clocks', 'market', 'todo-list'];
+
   // Load symbols from localStorage or use defaults
   const [symbols, setSymbols] = useState(() => {
     try {
@@ -483,11 +894,65 @@ function Dashboard() {
     return defaultSymbols;
   });
 
+  // Load world clock order from localStorage
+  const [worldClocks, setWorldClocks] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dashboardWorldClocks');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (error) {
+      console.error('Error loading world clocks from localStorage:', error);
+    }
+    return defaultWorldClocks;
+  });
+
+  // Load section order from localStorage
+  const [sectionOrder, setSectionOrder] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dashboardSectionOrder');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (error) {
+      console.error('Error loading section order from localStorage:', error);
+    }
+    return defaultSectionOrder;
+  });
+
   const [stockData, setStockData] = useState({});
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [newSymbolInput, setNewSymbolInput] = useState('');
   const [addingSymbol, setAddingSymbol] = useState(false);
+
+  // Sensors for drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Save world clocks order to localStorage
+  useEffect(() => {
+    localStorage.setItem('dashboardWorldClocks', JSON.stringify(worldClocks));
+  }, [worldClocks]);
+
+  // Save section order to localStorage
+  useEffect(() => {
+    localStorage.setItem('dashboardSectionOrder', JSON.stringify(sectionOrder));
+  }, [sectionOrder]);
 
   // Save symbols to localStorage whenever they change
   useEffect(() => {
@@ -630,6 +1095,167 @@ function Dashboard() {
     }
   };
 
+  // Handle drag end for world clocks
+  const handleWorldClocksDragEnd = (event) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setWorldClocks((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
+  // Handle drag end for stock cards
+  const handleStockCardsDragEnd = (event) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setSymbols((items) => {
+        const oldIndex = items.findIndex((item) => item.display === active.id);
+        const newIndex = items.findIndex((item) => item.display === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
+  // Handle drag end for sections
+  const handleSectionsDragEnd = (event) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setSectionOrder((items) => {
+        const oldIndex = items.indexOf(active.id);
+        const newIndex = items.indexOf(over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
+  // Render sections based on order
+  const renderSection = (sectionId) => {
+    switch (sectionId) {
+      case 'world-clocks':
+        return (
+          <SortableSection key={sectionId} id={sectionId}>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">World Clocks</h2>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleWorldClocksDragEnd}
+              >
+                <SortableContext items={worldClocks.map((clock) => clock.id)}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {worldClocks.map((clock) => (
+                      <SortableWorldClock
+                        key={clock.id}
+                        id={clock.id}
+                        timezone={clock.timezone}
+                        city={clock.city}
+                        country={clock.country}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            </div>
+          </SortableSection>
+        );
+      case 'market':
+        return (
+          <SortableSection key={sectionId} id={sectionId}>
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Market</h2>
+                <div className="flex items-center gap-4">
+                  {lastUpdate && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      Last updated: {lastUpdate.toLocaleTimeString('en-US', { timeZone: 'America/New_York' })}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={loadStockData}
+                    disabled={loading}
+                    className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                  >
+                    <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Refresh
+                  </button>
+                </div>
+              </div>
+              
+              {/* Add Symbol Input */}
+              <div className="mb-4 flex gap-2">
+                <input
+                  type="text"
+                  value={newSymbolInput}
+                  onChange={(e) => setNewSymbolInput(e.target.value.toUpperCase())}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Enter symbol (e.g., AAPL, TSLA, MSFT)"
+                  disabled={addingSymbol}
+                  className="flex-1 px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <button
+                  type="button"
+                  onClick={addSymbol}
+                  disabled={addingSymbol || !newSymbolInput.trim()}
+                  className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {addingSymbol ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Add Symbol
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleStockCardsDragEnd}
+              >
+                <SortableContext items={symbols.map((s) => s.display)}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {symbols.map((symbolConfig) => (
+                      <SortableStockCard
+                        key={symbolConfig.display}
+                        id={symbolConfig.display}
+                        symbol={symbolConfig.display}
+                        data={stockData[symbolConfig.display] || null}
+                        loading={loading && !stockData[symbolConfig.display]}
+                        onRemove={symbols.length > 1 ? () => removeSymbol(symbolConfig.display) : null}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            </div>
+          </SortableSection>
+        );
+      case 'todo-list':
+        return (
+          <SortableSection key={sectionId} id={sectionId}>
+            <TodoList />
+          </SortableSection>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="w-full max-w-7xl mx-auto">
       {/* Header */}
@@ -638,91 +1264,16 @@ function Dashboard() {
         <p className="text-gray-600 dark:text-gray-400">Real-time market data and world clocks</p>
       </div>
 
-      {/* World Clocks Section */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">World Clocks</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <WorldClock timezone="America/New_York" city="New York" country="United States" />
-          <WorldClock timezone="Europe/London" city="London" country="United Kingdom" />
-          <WorldClock timezone="Asia/Tokyo" city="Tokyo" country="Japan" />
-          <WorldClock timezone="Australia/Sydney" city="Sydney" country="Australia" />
-        </div>
-      </div>
-
-      {/* Stock Prices Section */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Market</h2>
-          <div className="flex items-center gap-4">
-            {lastUpdate && (
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                Last updated: {lastUpdate.toLocaleTimeString('en-US', { timeZone: 'America/New_York' })}
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={loadStockData}
-              disabled={loading}
-              className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-            >
-              <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              Refresh
-            </button>
-          </div>
-        </div>
-        
-        {/* Add Symbol Input */}
-        <div className="mb-4 flex gap-2">
-          <input
-            type="text"
-            value={newSymbolInput}
-            onChange={(e) => setNewSymbolInput(e.target.value.toUpperCase())}
-            onKeyPress={handleKeyPress}
-            placeholder="Enter symbol (e.g., AAPL, TSLA, MSFT)"
-            disabled={addingSymbol}
-            className="flex-1 px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          />
-          <button
-            type="button"
-            onClick={addSymbol}
-            disabled={addingSymbol || !newSymbolInput.trim()}
-            className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {addingSymbol ? (
-              <>
-                <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Adding...
-              </>
-            ) : (
-              <>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Add Symbol
-              </>
-            )}
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {symbols.map((symbolConfig) => (
-            <StockInfoCard
-              key={symbolConfig.display}
-              symbol={symbolConfig.display}
-              data={stockData[symbolConfig.display] || null}
-              loading={loading && !stockData[symbolConfig.display]}
-              onRemove={symbols.length > 1 ? () => removeSymbol(symbolConfig.display) : null}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* To-Do List Section */}
-      <TodoList />
+      {/* Sections in order with drag and drop */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleSectionsDragEnd}
+      >
+        <SortableContext items={sectionOrder} strategy={verticalListSortingStrategy}>
+          {sectionOrder.map((sectionId) => renderSection(sectionId))}
+        </SortableContext>
+      </DndContext>
     </div>
   );
 }
