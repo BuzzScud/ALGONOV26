@@ -39,7 +39,7 @@ function MonitorChart({ monitorId }) {
       // API returns array of { time, value } or { timestamp, responseTime }
       const labels = data.map((d) => {
         const time = d.time || d.timestamp;
-        return new Date(time).toLocaleTimeString();
+        return new Date(time).toLocaleTimeString('en-US', { timeZone: 'America/New_York' });
       });
       const values = data.map((d) => d.value || d.responseTime || 0);
 

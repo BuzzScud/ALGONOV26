@@ -10,8 +10,36 @@
   }
 }
 
+/* Hide scrollbars but maintain scroll functionality */
+html {
+  overflow: -moz-scrollbars-none; /* Firefox - hide scrollbar */
+  -ms-overflow-style: none; /* IE and Edge - hide scrollbar */
+  scrollbar-width: none; /* Firefox - hide scrollbar */
+}
+
+html::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera - hide scrollbar */
+}
+
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow: -moz-scrollbars-none; /* Firefox - hide scrollbar */
+  -ms-overflow-style: none; /* IE and Edge - hide scrollbar */
+  scrollbar-width: none; /* Firefox - hide scrollbar */
+}
+
+body::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera - hide scrollbar */
+}
+
+/* Hide scrollbars for all elements but maintain scroll functionality */
+* {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+*::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }

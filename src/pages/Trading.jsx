@@ -421,9 +421,17 @@ function Trading() {
             return '';
           }
           if (interval === '1H') {
-            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            return date.toLocaleTimeString('en-US', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              timeZone: 'America/New_York'
+            });
           } else {
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            return date.toLocaleDateString('en-US', { 
+              month: 'short', 
+              day: 'numeric',
+              timeZone: 'America/New_York'
+            });
           }
         } catch (e) {
           return '';
@@ -845,7 +853,7 @@ function Trading() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>{lastRefresh ? `Last updated: ${lastRefresh.toLocaleString()}` : 'Ready to load data'}</span>
+              <span>{lastRefresh ? `Last updated: ${lastRefresh.toLocaleString('en-US', { timeZone: 'America/New_York' })}` : 'Ready to load data'}</span>
             </div>
             {chartData && (
               <button

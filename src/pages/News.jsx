@@ -114,7 +114,8 @@ function News() {
       month: 'short', 
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: 'America/New_York'
     });
   };
 
@@ -225,7 +226,7 @@ function News() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Last updated: {lastRefresh.toLocaleTimeString()}
+                Last updated: {lastRefresh.toLocaleTimeString('en-US', { timeZone: 'America/New_York' })}
               </span>
             )}
           </div>

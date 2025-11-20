@@ -240,7 +240,7 @@ function API() {
       }
       
       // Update API status history
-      const timestamp = new Date().toLocaleTimeString();
+      const timestamp = new Date().toLocaleTimeString('en-US', { timeZone: 'America/New_York' });
       setApiStatusHistory(prev => {
         const newHistory = [...prev, { time: timestamp, status: currentStatus === 'connected' ? 1 : 0 }];
         return newHistory.slice(-maxHistoryLength);
@@ -258,7 +258,7 @@ function API() {
       recordApiRequest(false);
       
       // Update API status history with failure
-      const timestamp = new Date().toLocaleTimeString();
+      const timestamp = new Date().toLocaleTimeString('en-US', { timeZone: 'America/New_York' });
       setApiStatusHistory(prev => {
         const newHistory = [...prev, { time: timestamp, status: 0 }];
         return newHistory.slice(-maxHistoryLength);
@@ -593,7 +593,7 @@ function API() {
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Last Check</p>
             <p className="text-sm font-medium text-gray-900 dark:text-white">
               {monitors.length > 0 && monitors[0]?.lastCheck 
-                ? new Date(monitors[0].lastCheck).toLocaleString()
+                ? new Date(monitors[0].lastCheck).toLocaleString('en-US', { timeZone: 'America/New_York' })
                 : 'Never'
               }
             </p>

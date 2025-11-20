@@ -26,8 +26,11 @@
  * 5. Q8 Fixed-Point Arithmetic
  *    - 72-bit modular arithmetic with 8 guard bits
  *    - Precise amplitude calculations using modular exponentiation
- *    - Prime exponentiation towers: base^(p1^(p2^p3)) using triadic prime sets
- *    - NOT generic tetration (x^x^x), but specifically prime-based towers
+ *    - PRIME EXPONENTIATION TOWERS: base^(p1^(p2^p3)) using triadic prime sets [p1, p2, p3]
+ *    - CRITICAL: This is NOT generic tetration (x^x^x), but specifically prime-based towers
+ *    - Example: 2^(5^(7^11)) for triadic set [5, 7, 11]
+ *    - First 500 primes are hardcoded in PRIMES_500
+ *    - Triadic sets MUST contain primes (or explicitly allowed coprimes like 12 or 15)
  * 
  * 6. Projection Formula
  *    For each step i in [0..N]:
@@ -71,13 +74,19 @@ ChartJS.register(
 );
 
 // Dimensional frequencies φ_i (Phonon Correction) - Full crystalline 12-d set
-// Primarily uses primes, with coprime exception: 12 is coprime to 5,7,11,13,17,19,23,29,31
-// (Similar to Enigma rotor configuration using 15 coprime to 3*5)
+// Primarily uses primes, with EXPLICIT coprime exception: 12 is coprime to 5,7,11,13,17,19,23,29,31
+// This is similar to Enigma device using (11, 15, 17) where 15 = 3×5 is coprime to 3*5
+// IMPORTANT: 12 is an explicitly chosen coprime exception, NOT a prime
+// All other values are primes: [3, 7, 31, 19, 5, 11, 13, 17, 23, 29, 31]
 const PHI_D = [3, 7, 31, 12, 19, 5, 11, 13, 17, 23, 29, 31];
 
 // Prime Exponentiation Tower depth - MUST be prime
-// Used for prime tower calculations: base^(p1^(p2^p3)) where p1,p2,p3 are primes
-const TETRATION_DEPTH = 31; // 11th prime
+// CRITICAL: This is NOT generic tetration (x^x^x), but PRIME EXPONENTIATION TOWERS
+// Prime exponentiation towers use triadic prime sets: base^(p1^(p2^p3)) where p1,p2,p3 are primes
+// Example: 2^(5^(7^11)) for triadic set [5, 7, 11]
+// The depth prime (31) is used to select triadic sets from PRIMES_500
+// DO NOT confuse this with generic tetration - these are fundamentally different
+const TETRATION_DEPTH = 31; // 11th prime - used for selecting triadic sets, NOT for generic tetration
 
 // Prime depth slider stops (tetration depth primes)
 const PRIME_STOPS = [11, 13, 17, 29, 31, 47, 59, 61, 97, 101];
@@ -136,11 +145,16 @@ function psiFromDepth(depthPrime) {
 }
 
 // ν(λ) - Phonetic value mapping
+// Formula: ν(λ) = 3^λ mod 3 for numeric lambda
+// Also maps phonetic strings: ν(dub) = 3, ν(kubt) = 5, ν(k'anch) = 7
 function nuLambda(lambda) {
   if (lambda === 'dub') return 3;
   if (lambda === 'kubt') return 5;
-  if (lambda === "k'anch") return 7;
-  if (typeof lambda === 'number') return lambda;
+  if (lambda === "k'anch" || lambda === "k'anchay") return 7;
+  if (typeof lambda === 'number') {
+    // Formula: ν(λ) = 3^λ mod 3
+    return Math.pow(3, lambda) % 3;
+  }
   return 3; // default
 }
 
@@ -280,7 +294,12 @@ function computeCrystallineProjection({
 
 // Compute triadic prime tower amplitude A = base^(p2^p3) mod 2^(64+8),
 // with exponent reduced mod λ(2^k) since base is odd and gcd(base, 2^k)=1.
+// CRITICAL: Triadic set MUST contain primes (or explicitly allowed coprimes)
+// This is a PRIME EXPONENTIATION TOWER, NOT generic tetration
 function amplitudeFromTriad(base, triad) {
+  // Validate triadic set contains primes (no coprimes allowed for amplitude calculations)
+  validateTriadicSet(triad, false);
+  
   const [p1, p2, p3] = triad; // p1 is for reference, we build tower base^(p2^p3)
   // Exponent E = p2^p3 mod LAMBDA
   const eMod = modPow(BigInt(p2), BigInt(p3), LAMBDA);
@@ -319,45 +338,62 @@ function fromQ8(q8int) {
   return q8int / Q8;
 }
 
-// Quick sieve for first N primes
-function firstNPrimes(N = 500) {
-  const limit = 4000; // enough to get ~550 primes
-  const sieve = new Uint8Array(limit + 1);
-  const primes = [];
-  for (let i = 2; i <= limit; i++) {
-    if (!sieve[i]) {
-      primes.push(i);
-      for (let j = i * 2; j <= limit; j += i) sieve[j] = 1;
-    }
-    if (primes.length >= N) break;
-  }
-  return primes;
-}
+// First 500 primes - HARDCODED for prime exponentiation towers
+// These primes are used to generate triadic sets [p1, p2, p3] for prime exponentiation towers
+// Example: [5, 7, 11] creates tower base^(5^(7^11))
+// Generated using Sieve of Eratosthenes, hardcoded for performance and determinism
+const PRIMES_500 = [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,193,197,199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,283,293,307,311,313,317,331,337,347,349,353,359,367,373,379,383,389,397,401,409,419,421,431,433,439,443,449,457,461,463,467,479,487,491,499,503,509,521,523,541,547,557,563,569,571,577,587,593,599,601,607,613,617,619,631,641,643,647,653,659,661,673,677,683,691,701,709,719,727,733,739,743,751,757,761,769,773,787,797,809,811,821,823,827,829,839,853,857,859,863,877,881,883,887,907,911,919,929,937,941,947,953,967,971,977,983,991,997,1009,1013,1019,1021,1031,1033,1039,1049,1051,1061,1063,1069,1087,1091,1093,1097,1103,1109,1117,1123,1129,1151,1153,1163,1171,1181,1187,1193,1201,1213,1217,1223,1229,1231,1237,1249,1259,1277,1279,1283,1289,1291,1297,1301,1303,1307,1319,1321,1327,1361,1367,1373,1381,1399,1409,1423,1427,1429,1433,1439,1447,1451,1453,1459,1471,1481,1483,1487,1489,1493,1499,1511,1523,1531,1543,1549,1553,1559,1567,1571,1579,1583,1597,1601,1607,1609,1613,1619,1621,1627,1637,1657,1663,1667,1669,1693,1697,1699,1709,1721,1723,1733,1741,1747,1753,1759,1777,1783,1787,1789,1801,1811,1823,1831,1847,1861,1867,1871,1873,1877,1879,1889,1901,1907,1913,1931,1933,1949,1951,1973,1979,1987,1993,1997,1999,2003,2011,2017,2027,2029,2039,2053,2063,2069,2081,2083,2087,2089,2099,2111,2113,2129,2131,2137,2141,2143,2153,2161,2179,2203,2207,2213,2221,2237,2239,2243,2251,2267,2269,2273,2281,2287,2293,2297,2309,2311,2333,2339,2341,2347,2351,2357,2371,2377,2381,2383,2389,2393,2399,2411,2417,2423,2437,2441,2447,2459,2467,2473,2477,2503,2521,2531,2539,2543,2549,2551,2557,2579,2591,2593,2609,2617,2621,2633,2647,2657,2659,2663,2671,2677,2683,2687,2689,2693,2699,2707,2711,2713,2719,2729,2731,2741,2749,2753,2767,2777,2789,2791,2797,2801,2803,2819,2833,2837,2843,2851,2857,2861,2879,2887,2897,2903,2909,2917,2927,2939,2953,2957,2963,2969,2971,2999,3001,3011,3019,3023,3037,3041,3049,3061,3067,3079,3083,3089,3109,3119,3121,3137,3163,3167,3169,3181,3187,3191,3203,3209,3217,3221,3229,3251,3253,3257,3259,3271,3299,3301,3307,3313,3319,3323,3329,3331,3343,3347,3359,3361,3371,3373,3389,3391,3407,3413,3433,3449,3457,3461,3463,3467,3469,3491,3499,3511,3517,3527,3529,3533,3539,3541,3547,3557,3559,3571];
 
-const PRIMES_500 = firstNPrimes(500);
-
-// Generate default triads near a given prime depth pDepth
-// Build 11–13 triads centered around pDepth using neighbors in the prime list.
+// Generate triadic prime sets near a given prime depth pDepth
+// Build 11–13 triads centered around pDepth using sequential primes from PRIMES_500
+// Each triadic set is [p[i], p[i+1], p[i+2]] where all values are primes
+// These triadic sets are used for prime exponentiation towers: base^(p1^(p2^p3))
 function generateTriadsAroundPrime(pDepth, count, primes) {
+  if (!isPrime(pDepth)) {
+    throw new Error(`Depth must be a prime number, got: ${pDepth}. Prime exponentiation towers require prime-based depth.`);
+  }
+  
   const idx = primes.indexOf(pDepth);
-  if (idx === -1) throw new Error(`Depth prime ${pDepth} not in primes list`);
+  if (idx === -1) {
+    throw new Error(`Depth prime ${pDepth} not found in PRIMES_500. Prime exponentiation towers must use primes from the hardcoded list.`);
+  }
+  
   const triads = [];
   const half = Math.floor(count / 2);
+  
   for (let offset = -half; offset <= half; offset++) {
     if (triads.length >= count) break;
     const i = Math.max(0, Math.min(primes.length - 3, idx + offset));
-    // triadic set: [p[i], p[i+1], p[i+2]]
-    triads.push([primes[i], primes[i + 1], primes[i + 2]]);
+    
+    // Create triadic set: [p[i], p[i+1], p[i+2]]
+    // All values are guaranteed to be primes since they come from PRIMES_500
+    const triad = [primes[i], primes[i + 1], primes[i + 2]];
+    
+    // Validate the triadic set (should always pass since from PRIMES_500, but safety check)
+    try {
+      validateTriadicSet(triad, false); // No coprimes allowed in auto-generated sets
+      triads.push(triad);
+    } catch (err) {
+      console.error(`Invalid triadic set generated: ${JSON.stringify(triad)}`, err);
+      throw new Error(`Failed to generate valid triadic set: ${err.message}`);
+    }
   }
+  
   return triads;
 }
 
-// Prime Exponentiation Tower: Compute base^(p1^(p2^(p3^...))) using triadic prime sets
+// Prime Exponentiation Tower: Compute base^(p1^(p2^p3)) using triadic prime sets
 // This is NOT generic tetration (x^x^x), but specifically prime-based towers
 // Example: 2^(5^(7^11)) for triadic set [5,7,11]
 // The base is typically 2 or 3, and the tower is built from primes
-function primeExponentiationTower(base, primeTriad, useModular = true) {
-  if (!primeTriad || primeTriad.length === 0) return base;
+// CRITICAL: Triadic sets MUST contain primes (or explicitly allowed coprimes like 12 or 15)
+function primeExponentiationTower(base, primeTriad, useModular = true, allowCoprimes = false) {
+  if (!primeTriad || primeTriad.length === 0) {
+    throw new Error('Prime exponentiation tower requires a triadic set [p1, p2, p3]');
+  }
+  
+  // Validate that triadic set contains primes (or explicitly allowed coprimes)
+  validateTriadicSet(primeTriad, allowCoprimes);
   
   // For triadic sets [p1, p2, p3], compute base^(p1^(p2^p3))
   // Build from the top down: p2^p3 first, then p1^result, then base^result
@@ -399,10 +435,22 @@ function primeExponentiationTower(base, primeTriad, useModular = true) {
   }
 }
 
-// Legacy tetration wrapper - now uses prime exponentiation towers
-// This maintains backward compatibility while using proper prime towers
+// DEPRECATED: Legacy tetration wrapper - DO NOT USE
+// This function name is confusing because it suggests generic tetration (x^x^x),
+// but we actually use PRIME EXPONENTIATION TOWERS: base^(p1^(p2^p3)) with triadic prime sets
+// 
+// Use primeExponentiationTower() directly with explicit triadic sets instead.
+// Example: primeExponentiationTower(2, [5, 7, 11]) for 2^(5^(7^11))
+//
+// This wrapper is kept only for backward compatibility but should be removed.
+// It converts a depth index to a triadic set, which is not the correct way to use prime towers.
 function tetration(base, depth) {
-  // Convert depth to a prime-based triadic set
+  console.warn(
+    'WARNING: tetration() is deprecated. Use primeExponentiationTower() with explicit triadic sets instead. ' +
+    'Example: primeExponentiationTower(2, [5, 7, 11]) for prime exponentiation tower 2^(5^(7^11))'
+  );
+  
+  // Convert depth to a prime-based triadic set from PRIMES_500
   // Use depth as index into PRIMES_500 to select triadic set
   const primeIndex = Math.min(depth, PRIMES_500.length - 3);
   const triad = [
@@ -422,6 +470,46 @@ function isPrime(n) {
   for (let i = 3; i * i <= n; i += 2) {
     if (n % i === 0) return false;
   }
+  return true;
+}
+
+// Explicitly allowed coprimes for triadic sets (like Enigma device using 15 coprime to 3*5)
+// These are exceptions to the prime-only rule and must be explicitly chosen
+// Example: (11, 15, 17) where 15 is coprime to 3*5
+const ALLOWED_COPRIMES = [12, 15]; // 12 is coprime to 5,7,11,13,17,19,23,29,31; 15 is coprime to 3*5
+
+// Validate triadic set: ensures all values are primes OR explicitly allowed coprimes
+// Triadic sets for prime exponentiation towers MUST be [p1, p2, p3] where p1, p2, p3 are primes
+// Exception: explicitly allowed coprimes (like 12 or 15) may be used if explicitly chosen
+function validateTriadicSet(triad, allowCoprimes = false) {
+  if (!Array.isArray(triad) || triad.length !== 3) {
+    throw new Error(`Triadic set must be array of exactly 3 elements, got: ${JSON.stringify(triad)}`);
+  }
+  
+  for (const value of triad) {
+    if (!Number.isInteger(value) || value < 2) {
+      throw new Error(`Triadic set values must be integers >= 2, got: ${JSON.stringify(triad)}`);
+    }
+    
+    // Check if it's a prime
+    if (isPrime(value)) {
+      continue; // Valid prime
+    }
+    
+    // Check if it's an explicitly allowed coprime
+    if (allowCoprimes && ALLOWED_COPRIMES.includes(value)) {
+      continue; // Valid coprime exception
+    }
+    
+    // Not a prime and not an allowed coprime
+    throw new Error(
+      `Triadic set contains non-prime value ${value} which is not an explicitly allowed coprime. ` +
+      `Triadic sets for prime exponentiation towers must contain primes. ` +
+      `Allowed coprimes (if explicitly chosen): ${ALLOWED_COPRIMES.join(', ')}. ` +
+      `Got: ${JSON.stringify(triad)}`
+    );
+  }
+  
   return true;
 }
 
@@ -1092,13 +1180,13 @@ function recursiveLatticeLayer(n, d, k, lambda, depth, maxDepth, effectivePrimes
     const layerContribution = Math.cos(theta * phi * depthScale);
     cosineProduct *= layerContribution;
     
-    // Recursively calculate next layer if not at max depth (self-similar recursion)
-    if (depth < maxDepth) {
-      // Each recursive layer also applies prime tower depth 31
-      const recursiveLayer = recursiveLatticeLayer(n, d, k, lambda, depth + 1, maxDepth, effectivePrimes, historicalPrices);
-      // Multiply by recursive contribution (self-similar structure)
-      cosineProduct *= recursiveLayer;
-    }
+      // Recursively calculate next layer if not at max depth (self-similar recursion)
+      if (depth < maxDepth) {
+        // Recursive layer uses same L(n,d,k,λ) formula with self-similar scaling
+        const recursiveLayer = recursiveLatticeLayer(n, d, k, lambda, depth + 1, maxDepth, effectivePrimes, historicalPrices, omega, psi);
+        // Multiply by recursive contribution (self-similar structure)
+        cosineProduct *= recursiveLayer;
+      }
   }
   
   // Apply gamma and nu with correct formulas
@@ -1172,13 +1260,12 @@ function calculateAdvancedProjection(historicalPrices, projectionSteps, stabiliz
           const phaseShift = stepIteration * Math.PI / (2 * maxStepIterations);
           const oscillationPhase = Math.sin(phaseShift) * 0.1; // Small oscillation component
           
-          // Z calculation with prime tower depth 31 at every layer
+          // Z calculation using exact formula: Z_n^(d) = 3^((n-1)·2π/12/ln3) · cos((n-1)·2π/12 · Φ_d)
+          // No prime tower scaling - direct calculation as per FORMULA_REFINEMENTS.md
           const exponent = ((n_new - 1) * 2 * Math.PI / 12) / Math.log(3);
           const cosineArg = (n_new - 1) * 2 * Math.PI / 12 * phi_d + oscillationPhase;
-          const tetratedValue = tetration(3, TETRATION_DEPTH);
-          const tetrationScale = Math.log(tetratedValue) / (Math.log(3) * TETRATION_DEPTH);
-          const scaledExponent = exponent * tetrationScale;
-          const zValue = Math.pow(3, scaledExponent) * Math.cos(cosineArg);
+          const baseValue = Math.pow(3, exponent); // Direct calculation, no scaling
+          const zValue = baseValue * Math.cos(cosineArg);
           
           // L function with recursive self-similar structure (3 layers deep)
           // Add recursive iteration depth for more oscillations
@@ -1192,15 +1279,12 @@ function calculateAdvancedProjection(historicalPrices, projectionSteps, stabiliz
             lSum += recursiveL;
           }
           
-          // P function with prime tower depth 31
-          // Add iteration-based modulation for oscillations
+          // P function using exact formula: P_n^(d)(k) = [12^(θ(k,n)/ln(12) - ln(3))] · Π_{i=1}^d cos(θ(k,n) · φ_i)
+          // No prime tower scaling - direct calculation as per FORMULA_REFINEMENTS.md
           const thetaBase = calculateTheta(n_new, step, 0, 144000, 0);
           const theta = thetaBase + oscillationPhase * phi_d; // Modulate theta with oscillation
-          const tetratedValue12 = tetration(12, TETRATION_DEPTH);
-          const tetrationScale12 = Math.log(tetratedValue12) / (Math.log(12) * TETRATION_DEPTH);
           const exponentP = theta / Math.log(12) - Math.log(3);
-          const scaledExponentP = exponentP * tetrationScale12;
-          const baseTerm = Math.pow(12, scaledExponentP);
+          const baseTerm = Math.pow(12, exponentP); // Direct calculation, no scaling
           
           let product = 1;
           for (let i = 0; i <= d && i < effectivePrimes.length; i++) {
@@ -1624,7 +1708,7 @@ function Projection() {
   const [projectionHours, setProjectionHours] = useState(48); // 48-hour projection option
   const [recentSearches, setRecentSearches] = useState([]);
   const [showRecentSearches, setShowRecentSearches] = useState(false);
-  const [projectionModel, setProjectionModel] = useState('lattice'); // 'lattice', 'montecarlo', 'linear', 'primetetration'
+  const [projectionModel, setProjectionModel] = useState('primetetration'); // 'primetetration'
   const [modelParams, setModelParams] = useState(null);
   const [showModelInfo, setShowModelInfo] = useState(false);
   const [stabilizedModel, setStabilizedModel] = useState(null);
@@ -1632,6 +1716,7 @@ function Projection() {
   const [showModelParams, setShowModelParams] = useState(false);
   // Prime Tetration controls
   const [primeDepthIndex, setPrimeDepthIndex] = useState(4); // Default to index 4 = 31
+  const [primeDepthInput, setPrimeDepthInput] = useState(PRIME_STOPS[4] || 31); // Local state for input field
   const [base, setBase] = useState(3); // Default seed base 3
   const [projectionCount, setProjectionCount] = useState(12); // Default 12 projections
   const [snapshotData, setSnapshotData] = useState(null); // Stores snapshot with multiple lines
@@ -1646,6 +1731,9 @@ function Projection() {
   const inputRef = useRef(null);
   const chartDataRef = useRef(null);
   const historicalPricesRef = useRef(null);
+  const chartRef = useRef(null);
+  const originalYMin = useRef(null);
+  const originalYMax = useRef(null);
 
   const lineChartOptions = useRef({
     responsive: true,
@@ -1704,6 +1792,7 @@ function Projection() {
           enabled: true,
           mode: 'xy',
           modifierKey: null,
+          threshold: 10,
         },
         limits: {
           x: { min: 'original', max: 'original' },
@@ -1804,9 +1893,17 @@ function Projection() {
             return '';
           }
           if (interval === '1H') {
-            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            return date.toLocaleTimeString('en-US', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              timeZone: 'America/New_York'
+            });
           } else {
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            return date.toLocaleDateString('en-US', { 
+              month: 'short', 
+              day: 'numeric',
+              timeZone: 'America/New_York'
+            });
           }
         } catch (e) {
           return '';
@@ -1822,7 +1919,7 @@ function Projection() {
       
       // Calculate projection steps based on hours if needed
       let stepsToUse = projectionSteps;
-      if ((projectionModel === 'lattice' || projectionModel === 'primetetration') && projectionHours) {
+      if (projectionModel === 'primetetration' && projectionHours) {
         // Convert hours to steps based on interval
         // For 1H interval: 1 hour = 1 step
         // For 1D interval: 1 day = 24 hours, so 48 hours = 2 steps
@@ -1883,88 +1980,9 @@ function Projection() {
           projectedPrices = calculateSimpleProjection(historicalPrices, stepsToUse);
           setSnapshotData(null);
         }
-      } else if (projectionModel === 'lattice') {
-        try {
-          const result = calculateAdvancedProjection(historicalPrices, stepsToUse, savedModel, 15);
-          if (result && result.projections && Array.isArray(result.projections)) {
-            projectedPrices = result.projections;
-            // Ensure we have the correct number of points
-            if (projectedPrices.length !== stepsToUse) {
-              console.warn(`Projected prices length (${projectedPrices.length}) doesn't match stepsToUse (${stepsToUse})`);
-              if (projectedPrices.length < stepsToUse) {
-                const lastProjPrice = projectedPrices[projectedPrices.length - 1] || lastPrice;
-                while (projectedPrices.length < stepsToUse) {
-                  projectedPrices.push(lastProjPrice);
-                }
-              } else {
-                projectedPrices = projectedPrices.slice(0, stepsToUse);
-              }
-            }
-            currentStabilizedModel = result.stabilizedModel || savedModel;
-            
-            // Save the updated stabilized model
-            if (currentStabilizedModel) {
-              saveStabilizedModel(symbol.toUpperCase().trim(), currentStabilizedModel);
-              setStabilizedModel(currentStabilizedModel);
-            }
-          } else {
-            throw new Error('Invalid projection result');
-          }
-        } catch (err) {
-          console.error('Lattice projection failed, falling back to simple:', err);
-          projectedPrices = calculateSimpleProjection(historicalPrices, stepsToUse);
-        }
-      } else if (projectionModel === 'montecarlo') {
-        try {
-          projectedPrices = calculateMonteCarloProjection(historicalPrices, stepsToUse);
-          // Ensure we have the correct number of points
-          if (projectedPrices.length !== stepsToUse) {
-            console.warn(`Monte Carlo projected prices length (${projectedPrices.length}) doesn't match stepsToUse (${stepsToUse})`);
-            if (projectedPrices.length < stepsToUse) {
-              const lastProjPrice = projectedPrices[projectedPrices.length - 1] || lastPrice;
-              while (projectedPrices.length < stepsToUse) {
-                projectedPrices.push(lastProjPrice);
-              }
-            } else {
-              projectedPrices = projectedPrices.slice(0, stepsToUse);
-            }
-          }
-        } catch (err) {
-          console.error('Monte Carlo projection failed, falling back to simple:', err);
-          projectedPrices = calculateSimpleProjection(historicalPrices, stepsToUse);
-        }
       } else {
-        // No valid model selected - use lattice as fallback
-        try {
-          const result = calculateAdvancedProjection(historicalPrices, stepsToUse, savedModel, 15);
-          if (result && result.projections && Array.isArray(result.projections)) {
-            projectedPrices = result.projections;
-            // Ensure we have the correct number of points
-            if (projectedPrices.length !== stepsToUse) {
-              console.warn(`Projected prices length (${projectedPrices.length}) doesn't match stepsToUse (${stepsToUse})`);
-              if (projectedPrices.length < stepsToUse) {
-                const lastProjPrice = projectedPrices[projectedPrices.length - 1] || lastPrice;
-                while (projectedPrices.length < stepsToUse) {
-                  projectedPrices.push(lastProjPrice);
-                }
-              } else {
-                projectedPrices = projectedPrices.slice(0, stepsToUse);
-              }
-            }
-            currentStabilizedModel = result.stabilizedModel || savedModel;
-            
-            // Save the updated stabilized model
-            if (currentStabilizedModel) {
-              saveStabilizedModel(symbol.toUpperCase().trim(), currentStabilizedModel);
-              setStabilizedModel(currentStabilizedModel);
-            }
-          } else {
-            throw new Error('Invalid projection result');
-          }
-        } catch (err) {
-          console.error('Projection failed:', err);
-          projectedPrices = Array(stepsToUse).fill(lastPrice);
-        }
+        // Fallback to simple projection if Prime Tetration fails
+        projectedPrices = calculateSimpleProjection(historicalPrices, stepsToUse);
       }
       
       // Clear snapshot data for non-Prime Tetration models
@@ -2009,61 +2027,14 @@ function Projection() {
           phi: PHI_D,
           lines: snapshotData.lines ? snapshotData.lines.length : 0,
         });
-      } else if (projectionModel === 'lattice') {
-        const primes = (currentStabilizedModel?.primes && Array.isArray(currentStabilizedModel.primes)) 
-          ? currentStabilizedModel.primes 
-          : PHI_D.slice(0, 6);
-        const coprimes = (currentStabilizedModel?.coprimes && Array.isArray(currentStabilizedModel.coprimes)) 
-          ? currentStabilizedModel.coprimes 
-          : [];
-        const oscillations = (currentStabilizedModel?.lastOscillations && Array.isArray(currentStabilizedModel.lastOscillations))
-          ? currentStabilizedModel.lastOscillations
-          : null;
-        
-        setModelParams({
-          gamma: avgGamma.toFixed(4),
-          zValue: avgZ.toFixed(4),
-          primeCount: countPrimesInD(11),
-          entropy: calculateLatticeEntropy(11, historicalPrices).toFixed(4),
-          primes: primes,
-          coprimes: coprimes,
-          oscillations: oscillations,
-          iteration: currentStabilizedModel?.iteration || 0,
-          lockedPoints: (currentStabilizedModel?.lockedPoints && Array.isArray(currentStabilizedModel.lockedPoints))
-            ? currentStabilizedModel.lockedPoints.length
-            : 0,
-        });
-      } else if (projectionModel === 'montecarlo') {
-        // Calculate Monte Carlo statistics
-        const returns = [];
-        for (let i = 1; i < historicalPrices.length; i++) {
-          returns.push((historicalPrices[i] - historicalPrices[i - 1]) / historicalPrices[i - 1]);
-        }
-        const meanReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
-        const variance = returns.reduce((sum, r) => sum + Math.pow(r - meanReturn, 2), 0) / returns.length;
-        const stdDev = Math.sqrt(variance);
-        
-        setModelParams({
-          meanReturn: (meanReturn * 100).toFixed(4),
-          volatility: (stdDev * 100).toFixed(4),
-          simulations: 10000,
-          dataPoints: historicalPrices.length,
-        });
       } else {
         setModelParams(null);
       }
       
-      // Generate future labels for projections (using time-based labels)
+      // Generate future labels for projections (using step-based labels)
       const projectedLabels = [];
-      const lastTimestamp = validData[validData.length - 1]?.timestamp || Date.now();
       for (let i = 1; i <= stepsToUse; i++) {
-        if (interval === '1H') {
-          const futureTime = new Date(lastTimestamp + i * 60 * 60 * 1000);
-          projectedLabels.push(futureTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
-        } else {
-          const futureTime = new Date(lastTimestamp + i * 24 * 60 * 60 * 1000);
-          projectedLabels.push(futureTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-        }
+        projectedLabels.push(`Step ${i}`);
       }
       
       // Ensure arrays are valid before spreading
@@ -2302,11 +2273,7 @@ function Projection() {
       } else {
         // Single projection line for other models
         datasets.push({
-            label: `${symbol.toUpperCase()} Projected (${
-            projectionModel === 'lattice' ? '12-Fold Lattice' : 
-            projectionModel === 'montecarlo' ? 'Monte Carlo' : 
-            'Lattice'
-          })`,
+            label: `${symbol.toUpperCase()} Projected (Prime Tetration)`,
           data: projectedData.slice(0, allLabels.length),
           borderColor: 'rgb(168, 85, 247)',
           backgroundColor: 'rgba(168, 85, 247, 0.1)',
@@ -2356,9 +2323,13 @@ function Projection() {
         const range = maxValue - minValue;
         const padding = Math.max(range * 0.05, minValue * 0.01);
         
+        // Store original min/max for reset zoom functionality
+        originalYMin.current = Math.max(0, minValue - padding);
+        originalYMax.current = maxValue + padding;
+        
         // Update chart options with calculated min/max
-        lineChartOptions.current.scales.y.min = Math.max(0, minValue - padding);
-        lineChartOptions.current.scales.y.max = maxValue + padding;
+        lineChartOptions.current.scales.y.min = originalYMin.current;
+        lineChartOptions.current.scales.y.max = originalYMax.current;
       }
       
       chartDataRef.current = chartDataObj;
@@ -2396,14 +2367,16 @@ function Projection() {
       // Load all configuration parameters
       setSymbol(savedProjection.symbol || '');
       setInterval(savedProjection.interval || '1D');
-      setProjectionModel(savedProjection.projectionModel || 'lattice');
+      setProjectionModel(savedProjection.projectionModel || 'primetetration');
       setProjectionSteps(savedProjection.projectionSteps || 20);
       setProjectionHours(savedProjection.projectionHours || 48);
       
       if (savedProjection.projectionModel === 'primetetration') {
         setBase(savedProjection.base || 3);
         setProjectionCount(savedProjection.projectionCount || 12);
-        setPrimeDepthIndex(savedProjection.primeDepthIndex !== undefined ? savedProjection.primeDepthIndex : 4);
+        const loadedIndex = savedProjection.primeDepthIndex !== undefined ? savedProjection.primeDepthIndex : 4;
+        setPrimeDepthIndex(loadedIndex);
+        setPrimeDepthInput(PRIME_STOPS[loadedIndex] || 31);
         setOmegaHz(savedProjection.omegaHz || 432);
         setUseLambdaSchedule(savedProjection.useLambdaSchedule !== undefined ? savedProjection.useLambdaSchedule : true);
         setUseOmegaSchedule(savedProjection.useOmegaSchedule || false);
@@ -2431,6 +2404,25 @@ function Projection() {
             projectedChange: savedProjection.chartData.projectedChange !== undefined ? Number(savedProjection.chartData.projectedChange) : null,
             projectedChangePercent: savedProjection.chartData.projectedChangePercent !== undefined ? Number(savedProjection.chartData.projectedChangePercent) : null,
           };
+          
+          // Calculate and store original min/max for reset zoom
+          const allDataPoints = restoredChartData.datasets.flatMap(dataset => 
+            (dataset.data || []).filter(d => d !== null && d !== undefined && !isNaN(d) && typeof d === 'number' && d > 0)
+          );
+          
+          if (allDataPoints.length > 0) {
+            const minValue = Math.min(...allDataPoints);
+            const maxValue = Math.max(...allDataPoints);
+            const range = maxValue - minValue;
+            const padding = Math.max(range * 0.05, minValue * 0.01);
+            
+            originalYMin.current = Math.max(0, minValue - padding);
+            originalYMax.current = maxValue + padding;
+            
+            // Update chart options
+            lineChartOptions.current.scales.y.min = originalYMin.current;
+            lineChartOptions.current.scales.y.max = originalYMax.current;
+          }
           
           // Set chart data to display the saved chart
           setChartData(restoredChartData);
@@ -2585,6 +2577,41 @@ function Projection() {
     }
   };
 
+  const handleResetZoom = () => {
+    if (chartRef.current) {
+      // react-chartjs-2 v4+ exposes chart instance via .chartInstance
+      // Older versions might expose it directly
+      let chart = null;
+      if (chartRef.current.chartInstance) {
+        chart = chartRef.current.chartInstance;
+      } else if (chartRef.current.chart) {
+        chart = chartRef.current.chart;
+      } else if (chartRef.current) {
+        chart = chartRef.current;
+      }
+      
+      if (chart) {
+        // Reset zoom using chartjs-plugin-zoom's resetZoom method
+        if (typeof chart.resetZoom === 'function') {
+          chart.resetZoom();
+        }
+        
+        // Reset to original Y-axis bounds if available
+        if (originalYMin.current !== null && originalYMax.current !== null) {
+          if (chart.scales && chart.scales.y) {
+            chart.scales.y.options.min = originalYMin.current;
+            chart.scales.y.options.max = originalYMax.current;
+            chart.update('none');
+          } else if (chart.options && chart.options.scales && chart.options.scales.y) {
+            chart.options.scales.y.min = originalYMin.current;
+            chart.options.scales.y.max = originalYMax.current;
+            chart.update('none');
+          }
+        }
+      }
+    }
+  };
+
   const handleRecursiveAnalysis = async () => {
     if (!symbol || !symbol.trim()) {
       setError('Please enter a stock symbol first');
@@ -2672,7 +2699,7 @@ function Projection() {
     <div className="max-w-7xl mx-auto">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Price Projection</h1>
-        <p className="text-gray-600 dark:text-gray-400">12-Fold Crystalline Periodic Lattice Model</p>
+        <p className="text-gray-600 dark:text-gray-400">Prime Tetration Projections</p>
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-200 dark:border-gray-700">
@@ -2776,37 +2803,18 @@ function Projection() {
 
           <div className="w-full lg:w-auto">
             <label htmlFor="projectionSteps" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              {projectionModel === 'lattice' ? 'Projection Hours' : 'Projection Steps'}
+              Projection Steps
             </label>
-            {projectionModel === 'lattice' ? (
-              <select
-                id="projectionHours"
-                value={projectionHours}
-                onChange={(e) => {
-                  const value = parseInt(e.target.value);
-                  setProjectionHours(value);
-                  if (chartData) {
-                    setTimeout(() => loadChartData(), 100);
-                  }
-                }}
-                className="w-full lg:w-32 px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all"
-              >
-                <option value={24}>24 Hours</option>
-                <option value={48}>48 Hours</option>
-                <option value={72}>72 Hours</option>
-                <option value={96}>96 Hours</option>
-              </select>
-            ) : (
-              <select
-                id="projectionSteps"
-                value={projectionSteps}
-                onChange={(e) => {
-                  const value = parseInt(e.target.value);
-                  setProjectionSteps(value);
-                  if (chartData) {
-                    setTimeout(() => loadChartData(), 100);
-                  }
-                }}
+            <select
+              id="projectionSteps"
+              value={projectionSteps}
+              onChange={(e) => {
+                const value = parseInt(e.target.value);
+                setProjectionSteps(value);
+                if (chartData) {
+                  setTimeout(() => loadChartData(), 100);
+                }
+              }}
                 className="w-full lg:w-32 px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all"
               >
                 <option value={10}>10 Steps</option>
@@ -2814,7 +2822,6 @@ function Projection() {
                 <option value={40}>40 Steps</option>
                 <option value={60}>60 Steps</option>
               </select>
-            )}
           </div>
           
           <div className="w-full lg:w-auto">
@@ -2861,24 +2868,17 @@ function Projection() {
           
           <div className="p-6 space-y-6">
             <div className="space-y-2">
-              <label htmlFor="projectionModel" className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                 Projection Model
               </label>
-              <select
-                id="projectionModel"
-                value={projectionModel}
-                onChange={(e) => {
-                  setProjectionModel(e.target.value);
-                  if (chartData) {
-                    setTimeout(() => loadChartData(), 100);
-                  }
-                }}
-                className="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white transition-all text-sm font-medium bg-white"
-              >
-                <option value="lattice">12-Fold Lattice Model</option>
-                <option value="primetetration">Prime Tetration Projections</option>
-                <option value="montecarlo">Monte Carlo Simulation</option>
-              </select>
+              <div className="w-full px-4 py-3 border-2 border-purple-500 dark:border-purple-400 rounded-lg bg-purple-50 dark:bg-purple-900/20 transition-all text-sm font-medium">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-purple-700 dark:text-purple-300 font-semibold">Prime Tetration Projections</span>
+                </div>
+              </div>
             </div>
 
             {projectionModel === 'primetetration' && (
@@ -2890,187 +2890,205 @@ function Projection() {
                     </svg>
                     Core Parameters
                   </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div className="space-y-2">
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                        Base (seed)
-                      </label>
-                      <label className="inline-flex items-center cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          checked={base === 3}
-                          onChange={() => {
-                            const newBase = base === 3 ? 2 : 3;
-                            setBase(newBase);
-                            if (chartData) {
-                              setTimeout(() => loadChartData(), 100);
-                            }
-                          }}
-                          className="sr-only peer" 
-                        />
-                        <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                        <span className="ms-3 text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {base === 3 ? '3 (preferred)' : '2 (Enigma-style)'}
-                        </span>
-                      </label>
-                    </div>
+                  
+                  {/* Base, Omega, and Schedule Options Grouped Box */}
+                  <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 mb-6 border border-gray-200 dark:border-gray-700">
+                    <h5 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                      <svg className="w-3 h-3 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      Seed, Frequency & Schedules
+                    </h5>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                            Base (seed)
+                          </label>
+                          <label className="inline-flex items-center cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              checked={base === 3}
+                              onChange={() => {
+                                const newBase = base === 3 ? 2 : 3;
+                                setBase(newBase);
+                                if (chartData) {
+                                  setTimeout(() => loadChartData(), 100);
+                                }
+                              }}
+                              className="sr-only peer" 
+                            />
+                            <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                            <span className="ms-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                              {base === 3 ? '3 (preferred)' : '2 (Enigma-style)'}
+                            </span>
+                          </label>
+                        </div>
 
+                        <div className="space-y-2">
+                          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                            Ω (Omega Hz)
+                          </label>
+                          <label className="inline-flex items-center cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              checked={omegaHz === 528}
+                              onChange={() => {
+                                const newOmegaHz = omegaHz === 432 ? 528 : 432;
+                                setOmegaHz(newOmegaHz);
+                                if (chartData) {
+                                  setTimeout(() => loadChartData(), 100);
+                                }
+                              }}
+                              className="sr-only peer" 
+                            />
+                            <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                            <span className="ms-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                              {omegaHz} Hz
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <div className="flex flex-wrap gap-6">
+                          <label className="inline-flex items-center cursor-pointer group">
+                            <input 
+                              type="checkbox" 
+                              checked={useLambdaSchedule}
+                              onChange={(e) => {
+                                setUseLambdaSchedule(e.target.checked);
+                                if (chartData) {
+                                  setTimeout(() => loadChartData(), 100);
+                                }
+                              }}
+                              className="sr-only peer" 
+                            />
+                            <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                            <span className="ms-3 text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                              Use λ Schedule (dub, kubt, k'anch)
+                            </span>
+                          </label>
+                          <label className="inline-flex items-center cursor-pointer group">
+                            <input 
+                              type="checkbox" 
+                              checked={useOmegaSchedule}
+                              onChange={(e) => {
+                                setUseOmegaSchedule(e.target.checked);
+                                if (chartData) {
+                                  setTimeout(() => loadChartData(), 100);
+                                }
+                              }}
+                              className="sr-only peer" 
+                            />
+                            <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <span className="ms-3 text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                              Use Ω Schedule (vary frequencies)
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label htmlFor="projectionCount" className="block text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
                         Projections Count
                       </label>
-                      <select
+                      <input
+                        type="number"
                         id="projectionCount"
+                        min="1"
+                        max="50"
+                        step="1"
                         value={projectionCount}
                         onChange={(e) => {
-                          setProjectionCount(parseInt(e.target.value, 10));
-                          if (chartData) {
-                            setTimeout(() => loadChartData(), 100);
+                          const inputValue = e.target.value;
+                          if (inputValue === '') {
+                            // Allow empty input while typing
+                            return;
                           }
-                        }}
-                        className="w-full px-4 py-2.5 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white transition-all text-sm font-medium bg-white"
-                      >
-                        <option value={11}>11</option>
-                        <option value={12}>12</option>
-                        <option value={13}>13</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="primeDepthSlider" className="block text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                        Prime Depth: <span className="text-purple-600 dark:text-purple-400 font-bold">{PRIME_STOPS[primeDepthIndex] || 31}</span>
-                      </label>
-                      <input
-                        type="range"
-                        id="primeDepthSlider"
-                        min="0"
-                        max={PRIME_STOPS.length - 1}
-                        step="1"
-                        value={primeDepthIndex}
-                        onChange={(e) => {
-                          setPrimeDepthIndex(parseInt(e.target.value, 10));
-                          if (chartData) {
-                            setTimeout(() => loadChartData(), 100);
-                          }
-                        }}
-                        className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-600"
-                      />
-                      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-                        <span>{PRIME_STOPS[0]}</span>
-                        <span>{PRIME_STOPS[PRIME_STOPS.length - 1]}</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                        Ω (Omega Hz)
-                      </label>
-                      <label className="inline-flex items-center cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          checked={omegaHz === 528}
-                          onChange={() => {
-                            const newOmegaHz = omegaHz === 432 ? 528 : 432;
-                            setOmegaHz(newOmegaHz);
+                          const value = parseInt(inputValue, 10);
+                          if (!isNaN(value) && value >= 1 && value <= 50) {
+                            setProjectionCount(value);
                             if (chartData) {
                               setTimeout(() => loadChartData(), 100);
                             }
-                          }}
-                          className="sr-only peer" 
-                        />
-                        <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                        <span className="ms-3 text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {omegaHz} Hz
-                        </span>
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const inputValue = e.target.value;
+                          if (inputValue === '' || isNaN(parseInt(inputValue, 10))) {
+                            setProjectionCount(12);
+                            if (chartData) {
+                              setTimeout(() => loadChartData(), 100);
+                            }
+                          } else {
+                            const value = parseInt(inputValue, 10);
+                            if (value < 1) {
+                              setProjectionCount(1);
+                              if (chartData) {
+                                setTimeout(() => loadChartData(), 100);
+                              }
+                            } else if (value > 50) {
+                              setProjectionCount(50);
+                              if (chartData) {
+                                setTimeout(() => loadChartData(), 100);
+                              }
+                            }
+                          }
+                        }}
+                        className="w-full px-4 py-2.5 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white transition-all text-sm font-medium bg-white"
+                        placeholder="Enter number (1-50)"
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Range: 1-50 projections</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="primeDepth" className="block text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                        Prime Depth
                       </label>
+                      <input
+                        type="number"
+                        id="primeDepth"
+                        min={PRIME_STOPS[0]}
+                        max={PRIME_STOPS[PRIME_STOPS.length - 1]}
+                        step="1"
+                        value={primeDepthInput}
+                        onChange={(e) => {
+                          const inputValue = e.target.value;
+                          setPrimeDepthInput(inputValue);
+                          // Allow typing any number, validate on blur
+                        }}
+                        onBlur={(e) => {
+                          const inputValue = e.target.value;
+                          if (inputValue === '' || isNaN(parseInt(inputValue, 10))) {
+                            // Reset to current valid prime
+                            const currentPrime = PRIME_STOPS[primeDepthIndex] || 31;
+                            setPrimeDepthInput(currentPrime);
+                          } else {
+                            const value = parseInt(inputValue, 10);
+                            // Find closest valid prime
+                            const closestPrime = PRIME_STOPS.reduce((prev, curr) => 
+                              Math.abs(curr - value) < Math.abs(prev - value) ? curr : prev
+                            );
+                            const newIndex = PRIME_STOPS.indexOf(closestPrime);
+                            setPrimeDepthIndex(newIndex);
+                            setPrimeDepthInput(closestPrime);
+                            if (chartData) {
+                              setTimeout(() => loadChartData(), 100);
+                            }
+                          }
+                        }}
+                        className="w-full px-4 py-2.5 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white transition-all text-sm font-medium bg-white"
+                        placeholder={`Enter prime (${PRIME_STOPS[0]}-${PRIME_STOPS[PRIME_STOPS.length - 1]})`}
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Valid primes: {PRIME_STOPS.join(', ')}</p>
                     </div>
                   </div>
                 </div>
-
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
-                    <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Schedule Options
-                  </h4>
-                  <div className="flex flex-wrap gap-6">
-                    <label className="inline-flex items-center cursor-pointer group">
-                      <input 
-                        type="checkbox" 
-                        checked={useLambdaSchedule}
-                        onChange={(e) => {
-                          setUseLambdaSchedule(e.target.checked);
-                          if (chartData) {
-                            setTimeout(() => loadChartData(), 100);
-                          }
-                        }}
-                        className="sr-only peer" 
-                      />
-                      <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                      <span className="ms-3 text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
-                        Use λ Schedule (dub, kubt, k'anch)
-                      </span>
-                    </label>
-                    <label className="inline-flex items-center cursor-pointer group">
-                      <input 
-                        type="checkbox" 
-                        checked={useOmegaSchedule}
-                        onChange={(e) => {
-                          setUseOmegaSchedule(e.target.checked);
-                          if (chartData) {
-                            setTimeout(() => loadChartData(), 100);
-                          }
-                        }}
-                        className="sr-only peer" 
-                      />
-                      <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                      <span className="ms-3 text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                        Use Ω Schedule (vary frequencies)
-                      </span>
-                    </label>
-                  </div>
-                </div>
               </>
-            )}
-            {projectionModel === 'lattice' && (
-              <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                      </svg>
-                      Lattice Model Analysis
-                    </h4>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Perform recursive FFT analysis on price signal</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleRecursiveAnalysis}
-                    disabled={analyzing || !symbol || !symbol.trim() || !historicalPricesRef.current || (historicalPricesRef.current && historicalPricesRef.current.length < 8)}
-                    className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white text-sm font-semibold rounded-lg hover:from-purple-700 hover:to-purple-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed disabled:opacity-50 shadow-md hover:shadow-lg transition-all flex items-center gap-2"
-                    title={!symbol || !symbol.trim() ? 'Enter a stock symbol first' : !historicalPricesRef.current ? 'Load chart data first' : (historicalPricesRef.current && historicalPricesRef.current.length < 8) ? 'Need at least 8 data points for FFT analysis' : 'Perform recursive FFT analysis on price signal'}
-                  >
-                    {analyzing ? (
-                      <>
-                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span>Analyzing...</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        <span>Recursive Analysis</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
             )}
             
             <div className="border-t border-gray-200 dark:border-gray-700 pt-6 flex items-center justify-between">
@@ -3345,16 +3363,8 @@ function Projection() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
                 </svg>
                 <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
-                  {projectionModel === 'primetetration' ? 'Prime Tetration Parameters' :
-                   projectionModel === 'lattice' ? 'Stabilized Model Parameters' : 
-                   projectionModel === 'montecarlo' ? 'Monte Carlo Parameters' : 
-                   'Model Parameters'}
+                  Prime Tetration Parameters
                 </h4>
-                {projectionModel === 'lattice' && modelParams.iteration > 0 && (
-                  <span className="text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full font-medium">
-                    Iteration {modelParams.iteration}
-                  </span>
-                )}
               </div>
               <svg
                 className={`w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${
@@ -3417,103 +3427,6 @@ function Projection() {
                         </div>
                       )}
                     </>
-                  ) : projectionModel === 'lattice' ? (
-                    <>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-500 dark:text-gray-400">Γ:</span>
-                          <span className="font-mono font-semibold text-gray-900 dark:text-white">{modelParams.gamma}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-500 dark:text-gray-400">Z:</span>
-                          <span className="font-mono font-semibold text-gray-900 dark:text-white">{modelParams.zValue}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-500 dark:text-gray-400">Entropy:</span>
-                          <span className="font-mono font-semibold text-gray-900 dark:text-white">{modelParams.entropy}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-500 dark:text-gray-400">Iteration:</span>
-                          <span className="font-mono font-semibold text-gray-900 dark:text-white">{modelParams.iteration || 0}</span>
-                        </div>
-                      </div>
-                      
-                      {modelParams.primes && Array.isArray(modelParams.primes) && modelParams.primes.length > 0 && (
-                        <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-                          <div className="flex flex-col gap-2">
-                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">Stabilized Primes:</span>
-                            <div className="flex flex-wrap gap-2">
-                              {modelParams.primes.map((prime, idx) => (
-                                <span key={idx} className="text-xs font-mono text-gray-900 dark:text-white bg-purple-100 dark:bg-purple-900/30 px-2 py-1 rounded">
-                                  {prime}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {modelParams.coprimes && Array.isArray(modelParams.coprimes) && modelParams.coprimes.length > 0 && (
-                        <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-                          <div className="flex flex-col gap-2">
-                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">Stabilized Coprimes:</span>
-                            <div className="flex flex-wrap gap-2">
-                              {modelParams.coprimes.map((coprime, idx) => (
-                                <span key={idx} className="text-xs font-mono text-gray-900 dark:text-white bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded">
-                                  {coprime}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {modelParams.oscillations && Array.isArray(modelParams.oscillations) && modelParams.oscillations.length > 0 && (
-                        <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-                          <div className="flex flex-col gap-2">
-                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">Detected Oscillations:</span>
-                            <div className="flex flex-wrap gap-2">
-                              {modelParams.oscillations.slice(0, 5).map((osc, idx) => (
-                                <div key={idx} className="text-xs font-mono text-gray-900 dark:text-white bg-green-100 dark:bg-green-900/30 px-3 py-2 rounded flex flex-col gap-1">
-                                  <span className="font-semibold">Period: {osc.period?.toFixed(1) || 'N/A'}</span>
-                                  <span className="text-gray-600 dark:text-gray-400">Strength: {osc.strength?.toFixed(3) || 'N/A'}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {modelParams.lockedPoints > 0 && (
-                        <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">Locked Data Points:</span>
-                            <span className="text-xs font-mono font-semibold text-gray-900 dark:text-white bg-yellow-100 dark:bg-yellow-900/30 px-2 py-1 rounded">
-                              {modelParams.lockedPoints} points
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  ) : projectionModel === 'montecarlo' ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-500 dark:text-gray-400">Mean Return:</span>
-                        <span className="font-mono font-semibold text-gray-900 dark:text-white">{modelParams.meanReturn}%</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-500 dark:text-gray-400">Volatility:</span>
-                        <span className="font-mono font-semibold text-gray-900 dark:text-white">{modelParams.volatility}%</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-500 dark:text-gray-400">Simulations:</span>
-                        <span className="font-mono font-semibold text-gray-900 dark:text-white">{modelParams.simulations.toLocaleString()}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-500 dark:text-gray-400">Data Points:</span>
-                        <span className="font-mono font-semibold text-gray-900 dark:text-white">{modelParams.dataPoints}</span>
-                      </div>
-                    </div>
                   ) : null}
                 </div>
               </div>
@@ -3527,7 +3440,7 @@ function Projection() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>{lastRefresh ? `Last updated: ${lastRefresh.toLocaleString()}` : 'Ready to load data'}</span>
+              <span>{lastRefresh ? `Last updated: ${lastRefresh.toLocaleString('en-US', { timeZone: 'America/New_York' })}` : 'Ready to load data'}</span>
             </div>
             {chartData && (
               <button
@@ -3558,15 +3471,28 @@ function Projection() {
               )}
             </div>
             {chartData && (
-              <div className="flex items-center gap-4 text-xs">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                  <span className="text-gray-600 dark:text-gray-400">Historical</span>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                    <span className="text-gray-600 dark:text-gray-400">Historical</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-purple-500 border-2 border-dashed border-purple-500"></div>
+                    <span className="text-gray-600 dark:text-gray-400">Projected</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-purple-500 border-2 border-dashed border-purple-500"></div>
-                  <span className="text-gray-600 dark:text-gray-400">Projected</span>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleResetZoom}
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                  title="Reset zoom and pan"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Reset Zoom
+                </button>
               </div>
             )}
           </div>
@@ -3581,10 +3507,7 @@ function Projection() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                  {projectionModel === 'primetetration' ? 'About Prime Tetration Projections' :
-                   projectionModel === 'lattice' ? 'About 12-Fold Lattice Model' : 
-                   projectionModel === 'montecarlo' ? 'About Monte Carlo Simulation' : 
-                   'About 12-Fold Lattice Model'}
+                  About Prime Tetration Projections
                 </span>
               </div>
               <svg
@@ -3599,13 +3522,7 @@ function Projection() {
             {showModelInfo && (
               <div className="p-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
                 <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
-                  {projectionModel === 'primetetration'
-                    ? 'Prime Tetration Projections use the full crystalline 12-dimensional lattice with triadic prime exponentiation towers. Each projection line represents a different prime triad [p1,p2,p3] with amplitude A = base^(p2^p3) mod 2^72. The lattice oscillator Z(n) aggregates all 12 φ_d dimensions without dimension sweeping. All calculations use Q8 fixed-point truncation (+8 guard bits).'
-                    : projectionModel === 'lattice' 
-                    ? 'Projections use the 12-Fold Crystalline Periodic Lattice Model with Z_n^(d), L(n,d,k,λ), and Γ(n,d) functions. This model incorporates prime number theory, entropy calculations, FFT-based oscillation detection, and dimensional frequencies φ_i = [3,7,31,12,19,5,11,13,17,23,29,31].'
-                    : projectionModel === 'montecarlo'
-                    ? 'Projections use Monte Carlo simulation with 10,000 iterations. The model calculates historical returns, estimates mean return and volatility, and simulates multiple price paths using normal distribution. The expected value is calculated from the mean of all simulated paths.'
-                    : 'Projections use the 12-Fold Crystalline Periodic Lattice Model. This model incorporates prime number theory, entropy calculations, FFT-based oscillation detection, and dimensional frequencies φ_i = [3,7,31,12,19,5,11,13,17,23,29,31].'}
+                  Prime Tetration Projections use the full crystalline 12-dimensional lattice with triadic prime exponentiation towers. Each projection line represents a different prime triad [p1,p2,p3] with amplitude A = base^(p2^p3) mod 2^72. The lattice oscillator Z(n) aggregates all 12 φ_d dimensions without dimension sweeping. All calculations use Q8 fixed-point truncation (+8 guard bits).
                 </p>
               </div>
             )}
@@ -3629,6 +3546,7 @@ function Projection() {
                 </div>
               )}
               <Line
+                ref={chartRef}
                 key={`chart-${symbol}-${interval}-${projectionSteps}-${chartData.labels?.length || 0}`}
                 data={{
                   labels: Array.isArray(chartData.labels) ? chartData.labels : [],

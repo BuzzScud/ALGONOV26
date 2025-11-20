@@ -185,7 +185,7 @@ function Data() {
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
-    return date.toLocaleString();
+    return date.toLocaleString('en-US', { timeZone: 'America/New_York' });
   };
 
   const formatModelName = (model) => {

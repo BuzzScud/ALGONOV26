@@ -118,7 +118,7 @@ function MonitorCard({ monitor, onEdit, onDelete, onTogglePause }) {
             <div className="mb-3">
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Last Check</p>
               <p className="text-xs text-gray-700 dark:text-gray-300">
-                {new Date(monitor.lastCheck).toLocaleString()}
+                {new Date(monitor.lastCheck).toLocaleString('en-US', { timeZone: 'America/New_York' })}
               </p>
             </div>
           )}
@@ -129,7 +129,7 @@ function MonitorCard({ monitor, onEdit, onDelete, onTogglePause }) {
         <div className="mb-3">
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Last Check</p>
           <p className="text-xs text-gray-700 dark:text-gray-300">
-            {new Date(monitor.lastCheck).toLocaleString()}
+            {new Date(monitor.lastCheck).toLocaleString('en-US', { timeZone: 'America/New_York' })}
           </p>
         </div>
       )}

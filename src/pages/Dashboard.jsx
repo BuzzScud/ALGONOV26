@@ -656,7 +656,7 @@ function Dashboard() {
           <div className="flex items-center gap-4">
             {lastUpdate && (
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                Last updated: {lastUpdate.toLocaleTimeString()}
+                Last updated: {lastUpdate.toLocaleTimeString('en-US', { timeZone: 'America/New_York' })}
               </span>
             )}
             <button
