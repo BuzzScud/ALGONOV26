@@ -13,6 +13,7 @@ import { Line } from 'react-chartjs-2';
 import MonitorCard from '../components/MonitorCard';
 import AddMonitorModal from '../components/AddMonitorModal';
 import { getMonitors, createMonitor, updateMonitor, deleteMonitor, togglePauseMonitor, fetchMarketData, getPriceChartData } from '../services/monitorService';
+import { fetchFibhubNews } from '../services/newsService';
 
 ChartJS.register(
   CategoryScale,
@@ -34,6 +35,7 @@ function API() {
   const [yahooStatus, setYahooStatus] = useState('unknown');
   const [finnhubStatus, setFinnhubStatus] = useState('unknown');
   const [massiveStatus, setMassiveStatus] = useState('unknown');
+  const [fibhubStatus, setFibhubStatus] = useState('unknown');
   const [activeApi, setActiveApi] = useState('yahoo');
   const [preferredApi, setPreferredApi] = useState(() => {
     try {
@@ -159,6 +161,15 @@ function API() {
       console.error('Projection API check failed:', error);
       setProjectionStatus('down');
     }
+
+    // Check Fibhub News API
+    try {
+      const fibhubResult = await fetchFibhubNews('general');
+      setFibhubStatus(fibhubResult && fibhubResult.length > 0 ? 'operational' : 'down');
+    } catch (error) {
+      console.error('Fibhub API check failed:', error);
+      setFibhubStatus('down');
+    }
   };
 
   useEffect(() => {
@@ -237,6 +248,7 @@ function API() {
         setYahooStatus('failed');
         setFinnhubStatus('failed');
         setMassiveStatus('failed');
+        setFibhubStatus('unknown');
       }
       
       // Update API status history
@@ -253,6 +265,7 @@ function API() {
       setYahooStatus('failed');
       setFinnhubStatus('failed');
       setMassiveStatus('failed');
+      setFibhubStatus('failed');
       
       // Record failed API call
       recordApiRequest(false);
@@ -628,7 +641,7 @@ function API() {
       </div>
 
       {/* API Endpoints Status Boxes */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
         {/* Yahoo Finance API Status Box */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
           <div className="flex items-start justify-between mb-6">
@@ -762,6 +775,52 @@ function API() {
                 {massiveStatus === 'connected' ? 'Active' : 
                  massiveStatus === 'failed' ? 'Failed' : 
                  'Standby'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Fibhub News API Status Box */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                fibhubStatus === 'operational' ? 'bg-green-100 dark:bg-green-900/20' : 
+                fibhubStatus === 'down' ? 'bg-red-100 dark:bg-red-900/20' : 
+                'bg-orange-100 dark:bg-orange-900/20'
+              }`}>
+                <svg className={`w-6 h-6 ${
+                  fibhubStatus === 'operational' ? 'text-green-600 dark:text-green-400' : 
+                  fibhubStatus === 'down' ? 'text-red-600 dark:text-red-400' : 
+                  'text-orange-600 dark:text-orange-400'
+                }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Fibhub News API</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  <a href="https://fibhub.io" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
+                    api.fibhub.io
+                  </a>
+                </p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">News Endpoint</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`w-3 h-3 rounded-full ${
+                fibhubStatus === 'operational' ? 'bg-green-500 animate-pulse' : 
+                fibhubStatus === 'down' ? 'bg-red-500' : 
+                'bg-orange-500'
+              }`}></span>
+              <span className={`text-sm font-medium ${
+                fibhubStatus === 'operational' ? 'text-green-600 dark:text-green-400' : 
+                fibhubStatus === 'down' ? 'text-red-600 dark:text-red-400' : 
+                'text-orange-600 dark:text-orange-400'
+              }`}>
+                {fibhubStatus === 'operational' ? 'Operational' : 
+                 fibhubStatus === 'down' ? 'Down' : 
+                 'Checking...'}
               </span>
             </div>
           </div>

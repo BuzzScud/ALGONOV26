@@ -3046,45 +3046,36 @@ function Projection() {
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="primeDepth" className="block text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
                         Prime Depth
                       </label>
-                      <input
-                        type="number"
-                        id="primeDepth"
-                        min={PRIME_STOPS[0]}
-                        max={PRIME_STOPS[PRIME_STOPS.length - 1]}
-                        step="1"
-                        value={primeDepthInput}
-                        onChange={(e) => {
-                          const inputValue = e.target.value;
-                          setPrimeDepthInput(inputValue);
-                          // Allow typing any number, validate on blur
-                        }}
-                        onBlur={(e) => {
-                          const inputValue = e.target.value;
-                          if (inputValue === '' || isNaN(parseInt(inputValue, 10))) {
-                            // Reset to current valid prime
-                            const currentPrime = PRIME_STOPS[primeDepthIndex] || 31;
-                            setPrimeDepthInput(currentPrime);
-                          } else {
-                            const value = parseInt(inputValue, 10);
-                            // Find closest valid prime
-                            const closestPrime = PRIME_STOPS.reduce((prev, curr) => 
-                              Math.abs(curr - value) < Math.abs(prev - value) ? curr : prev
-                            );
-                            const newIndex = PRIME_STOPS.indexOf(closestPrime);
+                      <div className="flex flex-wrap gap-2">
+                        {PRIME_STOPS.map((prime) => {
+                          const isSelected = PRIME_STOPS[primeDepthIndex] === prime;
+                          return (
+                            <button
+                              key={prime}
+                              type="button"
+                              onClick={() => {
+                                const newIndex = PRIME_STOPS.indexOf(prime);
                             setPrimeDepthIndex(newIndex);
-                            setPrimeDepthInput(closestPrime);
+                                setPrimeDepthInput(prime);
                             if (chartData) {
                               setTimeout(() => loadChartData(), 100);
                             }
-                          }
                         }}
-                        className="w-full px-4 py-2.5 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white transition-all text-sm font-medium bg-white"
-                        placeholder={`Enter prime (${PRIME_STOPS[0]}-${PRIME_STOPS[PRIME_STOPS.length - 1]})`}
-                      />
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Valid primes: {PRIME_STOPS.join(', ')}</p>
+                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                isSelected
+                                  ? 'bg-purple-600 text-white shadow-md ring-2 ring-purple-400 dark:ring-purple-500'
+                                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-2 border-gray-300 dark:border-gray-600 hover:border-purple-400 dark:hover:border-purple-500 hover:text-purple-600 dark:hover:text-purple-400'
+                              }`}
+                            >
+                              {prime}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Selected: {PRIME_STOPS[primeDepthIndex] || 31}</p>
                     </div>
                   </div>
                 </div>

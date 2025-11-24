@@ -1,0 +1,466 @@
+/* Fibonacci Calculator Styles */
+.fib-container {
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 20px 40px;
+}
+
+.fib-container header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  padding: 2rem 0;
+}
+
+.fib-container header h1 {
+  font-size: 3rem;
+  font-weight: 700;
+  color: #212121;
+  margin-bottom: 0.75rem;
+}
+
+.dark .fib-container header h1 {
+  color: #ffffff;
+}
+
+.fib-container header p {
+  font-size: 1.25rem;
+  color: #6C757D;
+}
+
+.dark .fib-container header p {
+  color: #9CA3AF;
+}
+
+.fib-main-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.fib-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  border: 1px solid #DEE2E6;
+}
+
+.dark .fib-card {
+  background: #1F2937;
+  border-color: #374151;
+}
+
+.fib-card h2 {
+  color: #212121;
+  margin-bottom: 1.5rem;
+  font-size: 1.75rem;
+  font-weight: 600;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #F5F5F5;
+}
+
+.dark .fib-card h2 {
+  color: #ffffff;
+  border-bottom-color: #374151;
+}
+
+.fib-input-group {
+  margin-bottom: 1.5rem;
+}
+
+.fib-input-group label {
+  display: block;
+  margin-bottom: 0.75rem;
+  color: #212121;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.dark .fib-input-group label {
+  color: #E5E7EB;
+}
+
+.fib-input-group input {
+  width: 100%;
+  padding: 1rem;
+  border: 2px solid #DEE2E6;
+  border-radius: 8px;
+  font-size: 1.125rem;
+  transition: all 0.2s;
+  background: #ffffff;
+  color: #495057;
+}
+
+.dark .fib-input-group input {
+  background: #374151;
+  border-color: #4B5563;
+  color: #E5E7EB;
+}
+
+.fib-input-group input:focus {
+  outline: none;
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.fib-info-highlight {
+  padding: 1rem;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+  border: 2px solid #3B82F6;
+  border-radius: 8px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #3B82F6;
+  text-align: center;
+}
+
+.dark .fib-info-highlight {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0.1) 100%);
+  border-color: #60A5FA;
+  color: #60A5FA;
+}
+
+.fib-toggle-group {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.fib-toggle-btn {
+  flex: 1;
+  padding: 1rem;
+  background: #FAFAFA;
+  border: 2px solid #DEE2E6;
+  border-radius: 8px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #495057;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dark .fib-toggle-btn {
+  background: #374151;
+  border-color: #4B5563;
+  color: #E5E7EB;
+}
+
+.fib-toggle-btn:hover {
+  background: #F5F5F5;
+  border-color: #3B82F6;
+}
+
+.dark .fib-toggle-btn:hover {
+  background: #4B5563;
+}
+
+.fib-toggle-btn.active {
+  background: #3B82F6;
+  border-color: #3B82F6;
+  color: white;
+  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+}
+
+.fib-btn {
+  width: 100%;
+  padding: 1rem 1.5rem;
+  background: #3B82F6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 0.5rem;
+}
+
+.fib-btn:hover {
+  background: #2563EB;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.fib-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.fib-price-info {
+  background: #FAFAFA;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border: 1px solid #DEE2E6;
+}
+
+.dark .fib-price-info {
+  background: #374151;
+  border-color: #4B5563;
+}
+
+.fib-price-info h3 {
+  color: #212121;
+  margin-bottom: 1.25rem;
+  font-size: 1.375rem;
+  font-weight: 600;
+}
+
+.dark .fib-price-info h3 {
+  color: #E5E7EB;
+}
+
+.fib-price-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 1rem 0;
+  border-bottom: 1px solid #DEE2E6;
+}
+
+.dark .fib-price-row {
+  border-bottom-color: #4B5563;
+}
+
+.fib-price-row:last-child {
+  border-bottom: none;
+}
+
+.fib-price-label {
+  font-weight: 600;
+  color: #6C757D;
+  font-size: 1rem;
+}
+
+.dark .fib-price-label {
+  color: #9CA3AF;
+}
+
+.fib-price-value {
+  color: #212121;
+  font-weight: 600;
+  font-size: 1.125rem;
+}
+
+.dark .fib-price-value {
+  color: #E5E7EB;
+}
+
+.fib-levels-chart-container {
+  display: grid;
+  grid-template-columns: 500px 1fr;
+  gap: 2rem;
+  margin-bottom: 1.5rem;
+  align-items: stretch;
+  height: auto;
+}
+
+.fib-levels-card {
+  max-height: none;
+  overflow-y: visible;
+  height: auto;
+}
+
+.fib-levels-card,
+.fib-chart-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.fib-fibonacci-levels-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.fib-retracement-levels,
+.fib-extension-levels {
+  margin-bottom: 0;
+}
+
+.fib-retracement-levels h3,
+.fib-extension-levels h3 {
+  color: #212121;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #F5F5F5;
+}
+
+.dark .fib-retracement-levels h3,
+.dark .fib-extension-levels h3 {
+  color: #E5E7EB;
+  border-bottom-color: #374151;
+}
+
+.fib-level-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  border-radius: 6px;
+  background: #FAFAFA;
+  border: 1px solid #DEE2E6;
+  transition: all 0.2s;
+}
+
+.dark .fib-level-item {
+  background: #374151;
+  border-color: #4B5563;
+}
+
+.fib-level-item:hover {
+  background: #F5F5F5;
+  border-color: #3B82F6;
+  transform: translateX(4px);
+}
+
+.dark .fib-level-item:hover {
+  background: #4B5563;
+}
+
+.fib-level-label {
+  font-weight: 600;
+  color: #3B82F6;
+  font-size: 0.875rem;
+}
+
+.fib-level-value {
+  font-size: 1rem;
+  color: #212121;
+  font-weight: 600;
+}
+
+.dark .fib-level-value {
+  color: #E5E7EB;
+}
+
+.fib-error-message {
+  background: #FEE2E2;
+  color: #EF4444;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.25rem;
+  border-left: 4px solid #EF4444;
+  font-size: 0.875rem;
+}
+
+.dark .fib-error-message {
+  background: rgba(239, 68, 68, 0.2);
+  border-left-color: #EF4444;
+}
+
+.fib-loading {
+  text-align: center;
+  padding: 1.5rem;
+  color: #3B82F6;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.fib-info-box {
+  background: #DBEAFE;
+  border-left: 4px solid #3B82F6;
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin-top: 1rem;
+}
+
+.dark .fib-info-box {
+  background: rgba(59, 130, 246, 0.2);
+  border-left-color: #60A5FA;
+}
+
+.fib-info-box p {
+  color: #495057;
+  line-height: 1.5;
+  font-size: 0.75rem;
+  margin: 0;
+}
+
+.dark .fib-info-box p {
+  color: #D1D5DB;
+}
+
+.fib-chart-container {
+  width: 100%;
+  flex: 1;
+  margin-top: 1rem;
+  position: relative;
+  min-height: 600px;
+  height: 600px;
+  display: block;
+  visibility: visible;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.dark .fib-chart-container {
+  background: #1F2937;
+}
+
+.fib-chart-card {
+  min-height: 650px;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 1600px) {
+  .fib-levels-chart-container {
+    grid-template-columns: 450px 1fr;
+  }
+}
+
+@media (max-width: 1400px) {
+  .fib-levels-chart-container {
+    grid-template-columns: 400px 1fr;
+  }
+  
+  .fib-container {
+    max-width: 1400px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .fib-main-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .fib-levels-chart-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .fib-levels-card {
+    max-height: none;
+  }
+  
+  .fib-chart-container {
+    height: 600px;
+  }
+}
+
+@media (max-width: 768px) {
+  .fib-container header h1 {
+    font-size: 2rem;
+  }
+  
+  .fib-fibonacci-levels-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .fib-card {
+    padding: 1.5rem;
+  }
+  
+  .fib-chart-container {
+    height: 400px;
+  }
+  
+  .fib-container {
+    padding: 20px;
+  }
+}
+

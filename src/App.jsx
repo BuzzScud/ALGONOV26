@@ -7,6 +7,7 @@ import Projection from './pages/Projection';
 import Data from './pages/Data';
 import API from './pages/API';
 import Settings from './pages/Settings';
+import FIB from './pages/FIB';
 
 function App() {
   return (
@@ -16,7 +17,10 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="news" element={<News />} />
           <Route path="trading" element={<Trading />} />
-          <Route path="projection" element={<Projection />} />
+          <Route path="projection">
+            <Route index element={<Projection />} />
+            <Route path="fib" element={<FIB />} />
+          </Route>
           <Route path="data" element={<Data />} />
           <Route path="api" element={<API />} />
           <Route path="settings" element={<Settings />} />

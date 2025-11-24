@@ -14,6 +14,7 @@ const getApiKeys = () => {
   // Default fallback keys
   return {
     finnhub: 'demo',
+    fibhub: 'demo',
   };
 };
 
@@ -98,6 +99,130 @@ const getYahooFinanceNewsUrl = (category = 'general') => {
   };
   
   return categoryMap[category] || categoryMap.general;
+};
+
+// Fibhub News API
+// Endpoint: /news or /company-news
+// Note: If Fibhub API is unavailable, it will fail gracefully without breaking other sources
+const getFibhubNewsUrl = (category = 'general', symbol = null) => {
+  const apiKeys = getApiKeys();
+  const apiKey = apiKeys.fibhub || apiKeys.finnhub || 'demo'; // Fallback to finnhub key if fibhub key not set
+  
+  // If symbol is provided, get company-specific news
+  if (symbol) {
+    const today = new Date();
+    const fromDate = new Date(today);
+    fromDate.setDate(fromDate.getDate() - 7); // Last 7 days
+    
+    const from = fromDate.toISOString().split('T')[0];
+    const to = today.toISOString().split('T')[0];
+    
+    // Try multiple possible endpoints
+    return `https://api.fibhub.io/v1/company-news?symbol=${symbol}&from=${from}&to=${to}&token=${apiKey}`;
+  }
+  
+  // General market news - try multiple possible endpoints
+  return `https://api.fibhub.io/v1/news?category=${category}&token=${apiKey}`;
+};
+
+// Fetch news from Fibhub
+export const fetchFibhubNews = async (category = 'general', symbol = null) => {
+  try {
+    const url = getFibhubNewsUrl(category, symbol);
+    
+    // Add timeout to prevent hanging (8 seconds)
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Fibhub request timeout')), 8000)
+    );
+    
+    const fetchPromise = fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+      // Add mode to handle CORS if needed
+      mode: 'cors',
+    });
+    
+    const response = await Promise.race([fetchPromise, timeoutPromise]);
+    
+    if (!response.ok) {
+      // Log but don't throw - return empty array so other sources can still work
+      if (response.status !== 404) {
+        console.warn(`Fibhub API returned ${response.status}: ${response.statusText}`);
+      }
+      return [];
+    }
+    
+    const data = await response.json();
+    
+    // Handle different response formats
+    if (!data) {
+      return [];
+    }
+    
+    // Check if data is an array or wrapped in a property
+    let newsArray = [];
+    if (Array.isArray(data)) {
+      newsArray = data;
+    } else if (data.data && Array.isArray(data.data)) {
+      newsArray = data.data;
+    } else if (data.news && Array.isArray(data.news)) {
+      newsArray = data.news;
+    } else if (data.results && Array.isArray(data.results)) {
+      newsArray = data.results;
+    } else {
+      // If it's a single object, wrap it in an array
+      if (data.headline || data.title) {
+        newsArray = [data];
+      } else {
+        return [];
+      }
+    }
+    
+    if (newsArray.length === 0) {
+      return [];
+    }
+    
+    // Normalize Fibhub news format
+    return newsArray.map((item, index) => {
+      // Handle different datetime formats
+      let datetime = Date.now();
+      if (item.datetime) {
+        if (typeof item.datetime === 'number') {
+          // If it's a Unix timestamp in seconds, convert to milliseconds
+          datetime = item.datetime < 10000000000 ? item.datetime * 1000 : item.datetime;
+        } else {
+          datetime = new Date(item.datetime).getTime() || Date.now();
+        }
+      } else if (item.publishedAt) {
+        datetime = new Date(item.publishedAt).getTime() || Date.now();
+      } else if (item.pubDate) {
+        datetime = new Date(item.pubDate).getTime() || Date.now();
+      }
+      
+      return {
+        id: item.id || `${item.headline || item.title || 'fibhub'}-${datetime}-${index}`,
+        title: item.headline || item.title || 'No title',
+        summary: item.summary || item.description || item.content || '',
+        source: item.source || item.publisher || 'Fibhub',
+        url: item.url || item.link || item.webUrl || '#',
+        image: item.image || item.imageUrl || item.urlToImage || null,
+        datetime: datetime,
+        category: item.category || category,
+        symbol: item.related || item.symbol || symbol || null,
+        sentiment: item.sentiment || null,
+      };
+    });
+  } catch (error) {
+    // Silently fail - don't log errors that would spam console
+    // Only log if it's not a network/CORS error
+    if (error.message && !error.message.includes('timeout') && !error.message.includes('Failed to fetch')) {
+      console.warn('Fibhub fetch warning:', error.message);
+    }
+    // Don't throw - return empty array so other sources can still work
+    return [];
+  }
 };
 
 // Fetch news from Yahoo Finance RSS
@@ -248,6 +373,23 @@ export const fetchMarketNews = async (category = 'general', symbol = null) => {
         })
     );
     
+    // Try Fibhub (always attempt, but don't fail if it errors)
+    promises.push(
+      fetchFibhubNews(category, symbol)
+        .then(news => {
+          if (news && news.length > 0) {
+            sources.push('fibhub');
+            return news.map(item => ({ ...item, apiSource: 'fibhub' }));
+          }
+          return [];
+        })
+        .catch(error => {
+          // Fibhub errors are already handled internally, but log for debugging
+          console.warn('Fibhub fetch error (non-critical):', error.message);
+          return [];
+        })
+    );
+    
     // Try Yahoo Finance if no symbol (Yahoo Finance doesn't support symbol-specific news easily)
     if (!symbol) {
       promises.push(
@@ -340,22 +482,32 @@ export const searchNews = async (keyword) => {
     
     let result;
     
-    // If it looks like a symbol, try company-specific news first (Finnhub only for company news)
+    // If it looks like a symbol, try company-specific news first (Finnhub and Fibhub for company news)
     if (isLikelySymbol) {
       try {
-        // For company news, we can only use Finnhub (Yahoo Finance doesn't support symbol-specific easily)
-        const finnhubNews = await fetchFinnhubNews('general', trimmedKeyword)
+        // For company news, try both Finnhub and Fibhub
+        const [finnhubNews, fibhubNews] = await Promise.all([
+          fetchFinnhubNews('general', trimmedKeyword)
           .then(news => {
             if (news && news.length > 0) {
               return news.map(item => ({ ...item, apiSource: 'finnhub' }));
             }
             return [];
           })
-          .catch(() => []);
+            .catch(() => []),
+          fetchFibhubNews('general', trimmedKeyword)
+            .then(news => {
+              if (news && news.length > 0) {
+                return news.map(item => ({ ...item, apiSource: 'fibhub' }));
+              }
+              return [];
+            })
+            .catch(() => [])
+        ]);
         
-        // Also get general news from both sources and filter
+        // Also get general news from all sources and filter
         const generalResult = await fetchMarketNews('general');
-        const allNews = [...finnhubNews, ...(generalResult.news || [])];
+        const allNews = [...finnhubNews, ...fibhubNews, ...(generalResult.news || [])];
         
         // Remove duplicates
         const uniqueNews = removeDuplicates(allNews);
@@ -371,7 +523,9 @@ export const searchNews = async (keyword) => {
         // Sort by date
         filtered.sort((a, b) => (b.datetime || 0) - (a.datetime || 0));
         
-        const sources = finnhubNews.length > 0 ? ['finnhub'] : generalResult.sources || [];
+        const sources = [];
+        if (finnhubNews.length > 0) sources.push('finnhub');
+        if (fibhubNews.length > 0) sources.push('fibhub');
         if (generalResult.sources && generalResult.sources.length > 0) {
           sources.push(...generalResult.sources.filter(s => !sources.includes(s)));
         }

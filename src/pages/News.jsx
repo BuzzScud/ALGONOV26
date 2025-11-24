@@ -207,7 +207,12 @@ function News() {
             {newsSources.length > 0 && (
               <div className="flex items-center gap-2">
                 <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
-                  Sources: {newsSources.map(s => s === 'finnhub' ? 'Finnhub' : s === 'yahoo' ? 'Yahoo Finance' : s).join(' + ')}
+                  Sources: {newsSources.map(s => {
+                    if (s === 'finnhub') return 'Finnhub';
+                    if (s === 'yahoo') return 'Yahoo Finance';
+                    if (s === 'fibhub') return 'Fibhub';
+                    return s;
+                  }).join(' + ')}
                 </span>
                 {newsSources.length > 1 && (
                   <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-xs font-medium">
@@ -218,7 +223,12 @@ function News() {
             )}
             {!newsSources.length && newsSource && (
               <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
-                Source: {newsSource === 'finnhub' ? 'Finnhub' : newsSource === 'yahoo' ? 'Yahoo Finance' : newsSource.includes('+') ? newsSource.split('+').map(s => s === 'finnhub' ? 'Finnhub' : 'Yahoo Finance').join(' + ') : 'Unknown'}
+                Source: {newsSource === 'finnhub' ? 'Finnhub' : newsSource === 'yahoo' ? 'Yahoo Finance' : newsSource === 'fibhub' ? 'Fibhub' : newsSource.includes('+') ? newsSource.split('+').map(s => {
+                  if (s === 'finnhub') return 'Finnhub';
+                  if (s === 'yahoo') return 'Yahoo Finance';
+                  if (s === 'fibhub') return 'Fibhub';
+                  return s;
+                }).join(' + ') : 'Unknown'}
               </span>
             )}
             {lastRefresh && (
@@ -355,9 +365,11 @@ function News() {
                           <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                             item.apiSource === 'finnhub' 
                               ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' 
-                              : 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
+                              : item.apiSource === 'fibhub'
+                              ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
+                              : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                           }`}>
-                            {item.apiSource === 'finnhub' ? 'Finnhub' : 'Yahoo Finance'}
+                            {item.apiSource === 'finnhub' ? 'Finnhub' : item.apiSource === 'fibhub' ? 'Fibhub' : 'Yahoo Finance'}
                           </span>
                         )}
                         <span className="flex items-center gap-1">

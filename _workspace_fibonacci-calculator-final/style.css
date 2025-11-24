@@ -1,0 +1,429 @@
+/* PrimeUI-inspired Design System */
+:root {
+    --primary-color: #3B82F6;
+    --primary-dark: #2563EB;
+    --surface-0: #ffffff;
+    --surface-50: #FAFAFA;
+    --surface-100: #F5F5F5;
+    --surface-200: #EEEEEE;
+    --surface-300: #E0E0E0;
+    --surface-400: #BDBDBD;
+    --surface-500: #9E9E9E;
+    --surface-600: #757575;
+    --surface-700: #616161;
+    --surface-800: #424242;
+    --surface-900: #212121;
+    --text-color: #495057;
+    --text-secondary: #6C757D;
+    --border-color: #DEE2E6;
+    --success-color: #22C55E;
+    --danger-color: #EF4444;
+    --warning-color: #F59E0B;
+    --info-color: #3B82F6;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--surface-50);
+    color: var(--text-color);
+    line-height: 1.6;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1800px;
+    margin: 0 auto;
+    padding: 20px 40px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    padding: 2rem 0;
+}
+
+header h1 {
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--surface-900);
+    margin-bottom: 0.75rem;
+}
+
+header p {
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+}
+
+.main-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.card {
+    background: var(--surface-0);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--border-color);
+}
+
+.card h2 {
+    color: var(--surface-900);
+    margin-bottom: 1.5rem;
+    font-size: 1.75rem;
+    font-weight: 600;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--surface-100);
+}
+
+.input-group {
+    margin-bottom: 1.5rem;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 0.75rem;
+    color: var(--surface-900);
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.input-group input,
+.input-group select {
+    width: 100%;
+    padding: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1.125rem;
+    transition: all 0.2s;
+    background: var(--surface-0);
+    color: var(--text-color);
+}
+
+.input-group input:focus,
+.input-group select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.input-group input:hover,
+.input-group select:hover {
+    border-color: var(--primary-color);
+}
+
+/* Info Highlight Box */
+.info-highlight {
+    padding: 1rem;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+    border: 2px solid var(--primary-color);
+    border-radius: 8px;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    text-align: center;
+}
+
+/* Toggle Button Group */
+.toggle-group {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.toggle-btn {
+    flex: 1;
+    padding: 1rem;
+    background: var(--surface-50);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.toggle-btn:hover {
+    background: var(--surface-100);
+    border-color: var(--primary-color);
+}
+
+.toggle-btn.active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+}
+
+.btn {
+    width: 100%;
+    padding: 1rem 1.5rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.125rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 0.5rem;
+}
+
+.btn:hover {
+    background: var(--primary-dark);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.btn:active {
+    transform: translateY(1px);
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.price-info {
+    background: var(--surface-50);
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border-color);
+}
+
+.price-info h3 {
+    color: var(--surface-900);
+    margin-bottom: 1.25rem;
+    font-size: 1.375rem;
+    font-weight: 600;
+}
+
+.price-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.price-row:last-child {
+    border-bottom: none;
+}
+
+.price-label {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 1rem;
+}
+
+.price-value {
+    color: var(--surface-900);
+    font-weight: 600;
+    font-size: 1.125rem;
+}
+
+/* Levels and Chart Layout */
+.levels-chart-container {
+    display: grid;
+    grid-template-columns: 500px 1fr;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+    align-items: stretch;
+    height: auto;
+}
+
+.levels-card {
+    max-height: none;
+    overflow-y: visible;
+    height: auto;
+}
+
+.levels-card,
+.chart-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.levels-card h2,
+.chart-card h2 {
+    flex-shrink: 0;
+}
+
+#chartContainer {
+    width: 100%;
+    flex: 1;
+    margin-top: 1rem;
+    position: relative;
+    min-height: 0;
+}
+
+.fibonacci-levels-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.retracement-levels,
+.extension-levels {
+    margin-bottom: 0;
+}
+
+.retracement-levels h3,
+.extension-levels h3 {
+    color: var(--surface-900);
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--surface-100);
+}
+
+.level-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 6px;
+    background: var(--surface-50);
+    border: 1px solid var(--border-color);
+    transition: all 0.2s;
+}
+
+.level-item:hover {
+    background: var(--surface-100);
+    border-color: var(--primary-color);
+    transform: translateX(4px);
+}
+
+.level-label {
+    font-weight: 600;
+    color: var(--primary-color);
+    font-size: 0.875rem;
+}
+
+.level-value {
+    font-size: 1rem;
+    color: var(--surface-900);
+    font-weight: 600;
+}
+
+.error-message {
+    background: #FEE2E2;
+    color: var(--danger-color);
+    padding: 1rem;
+    border-radius: 6px;
+    margin-bottom: 1.25rem;
+    border-left: 4px solid var(--danger-color);
+    font-size: 0.875rem;
+}
+
+.loading {
+    text-align: center;
+    padding: 1.5rem;
+    color: var(--primary-color);
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.info-box {
+    background: #DBEAFE;
+    border-left: 4px solid var(--info-color);
+    padding: 0.75rem;
+    border-radius: 6px;
+    margin-top: 1rem;
+}
+
+.info-box p {
+    color: var(--text-color);
+    line-height: 1.5;
+    font-size: 0.75rem;
+    margin: 0;
+}
+
+/* Remove scrollbar styling since we're showing all levels */
+
+@media (max-width: 1600px) {
+    .levels-chart-container {
+        grid-template-columns: 450px 1fr;
+    }
+}
+
+@media (max-width: 1400px) {
+    .levels-chart-container {
+        grid-template-columns: 400px 1fr;
+    }
+    
+    .container {
+        max-width: 1400px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .main-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .levels-chart-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .levels-card {
+        max-height: none;
+    }
+    
+    #chartContainer {
+        height: 600px;
+    }
+}
+
+@media (max-width: 768px) {
+    header h1 {
+        font-size: 2rem;
+    }
+    
+    .fibonacci-levels-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .card {
+        padding: 1.5rem;
+    }
+    
+    #chartContainer {
+        height: 400px;
+    }
+    
+    .container {
+        padding: 20px;
+    }
+}
+
+.trend-indicator {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.75rem;
+    margin-left: 0.5rem;
+}
+
+.trend-up {
+    background: #D1FAE5;
+    color: var(--success-color);
+}
+
+.trend-down {
+    background: #FEE2E2;
+    color: var(--danger-color);
+}
