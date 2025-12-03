@@ -8,6 +8,7 @@ import Data from './pages/Data';
 import API from './pages/API';
 import Settings from './pages/Settings';
 import FIB from './pages/FIB';
+import Notes from './pages/Notes';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="news" element={<News />} />
           <Route path="trading" element={<Trading />} />
+          <Route path="notes" element={<Notes />} />
           <Route path="projection">
             <Route index element={<Projection />} />
             <Route path="fib" element={<FIB />} />

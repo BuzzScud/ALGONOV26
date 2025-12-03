@@ -95,6 +95,7 @@ function Sidebar() {
     { path: '/', label: 'Dashboard' },
     { path: '/news', label: 'News' },
     { path: '/trading', label: 'Charts' },
+    { path: '/notes', label: 'Notes' },
     { path: '/projection', label: 'Projection' },
     { path: '/projection/fib', label: 'FIB' },
     { path: '/data', label: 'Data' },

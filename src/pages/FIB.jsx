@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { createChart, ColorType, LineStyle, CrosshairMode } from 'lightweight-charts';
+import ApexCharts from 'apexcharts';
 import { fetchMarketData } from '../services/monitorService';
 import '../styles/FIB.css';
 
@@ -50,7 +50,6 @@ function FIB() {
   
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
-  const candlestickSeriesRef = useRef(null);
 
   // Fetch market data using the monitorService (properly handles Yahoo Finance API)
   const fetchFIBMarketData = async (symbolValue, period, anchorMode) => {
@@ -269,164 +268,248 @@ function FIB() {
     }
   };
 
-  // Initialize chart - fixed container dimensions and timing
-  const initializeChart = () => {
-    if (!chartContainerRef.current) {
-      console.error('Chart container ref is null');
+  // Calculate Fibonacci levels for annotations
+  const calculateFibonacciAnnotations = (high, low, precision = 2) => {
+    if (!high || !low || high <= low) return [];
+    
+    const range = high - low;
+    const annotations = [];
+    
+    // All positive levels (BLUE) - solid lines for 0.0 and 1.0, dashed for others
+    RETRACEMENT_LEVELS.forEach(level => {
+      const isKey = level.ratio === 0 || level.ratio === 1;
+      const price = low + (range * level.ratio);
+      annotations.push({
+        y: price,
+        borderColor: '#3B82F6',
+        strokeDashArray: isKey ? 0 : [5, 5],
+        borderWidth: isKey ? 2 : 1,
+        opacity: isKey ? 1 : 0.7,
+        label: {
+          borderColor: '#3B82F6',
+          style: {
+            color: '#fff',
+            background: '#3B82F6',
+            fontSize: '11px',
+            fontWeight: 600
+          },
+          text: `${level.label} (${price.toFixed(precision)})`,
+          position: 'right'
+        }
+      });
+    });
+    
+    // All negative levels (RED) - all dashed
+    EXTENSION_LEVELS.forEach(level => {
+      const price = low + (range * level.ratio);
+      annotations.push({
+        y: price,
+        borderColor: '#EF4444',
+        strokeDashArray: [5, 5],
+        borderWidth: 1,
+        opacity: 0.7,
+        label: {
+          borderColor: '#EF4444',
+          style: {
+            color: '#fff',
+            background: '#EF4444',
+            fontSize: '11px',
+            fontWeight: 600
+          },
+          text: `${level.label} (${price.toFixed(precision)})`,
+          position: 'right'
+        }
+      });
+    });
+    
+    return annotations;
+  };
+
+  // Initialize ApexCharts inline candles chart
+  const initializeChart = (chartData, high, low, precisionValue = 2) => {
+    if (!chartContainerRef.current || !chartData || chartData.length === 0) {
+      console.error('Chart container ref is null or no data');
       return false;
     }
     
     // Clean up existing chart if any
     if (chartRef.current) {
       try {
-        chartRef.current.remove();
+        chartRef.current.destroy();
       } catch (e) {
-        console.warn('Error removing existing chart:', e);
+        console.warn('Error destroying existing chart:', e);
       }
       chartRef.current = null;
-      candlestickSeriesRef.current = null;
     }
     
     const chartContainer = chartContainerRef.current;
     const isDarkMode = document.documentElement.classList.contains('dark');
     
-    // Ensure container has dimensions - critical for chart to render
+    // Get container dimensions
     const containerWidth = chartContainer.clientWidth || chartContainer.offsetWidth || 800;
     const containerHeight = chartContainer.clientHeight || chartContainer.offsetHeight || 600;
     
-    if (containerWidth <= 0 || containerHeight <= 0) {
-      console.error('Container has invalid dimensions:', { containerWidth, containerHeight });
-      // Force minimum dimensions
-      chartContainer.style.width = '800px';
-      chartContainer.style.height = '600px';
-    }
-    
-    console.log('Initializing chart with dimensions:', { 
-      width: containerWidth || 800, 
-      height: containerHeight || 600 
+    // Format data for ApexCharts candlestick
+    const formattedData = chartData.map(item => {
+      // ApexCharts expects timestamp in milliseconds
+      const timestamp = item.time * 1000;
+      return {
+        x: timestamp,
+        y: [item.open, item.high, item.low, item.close]
+      };
     });
     
+    // Calculate Fibonacci annotations
+    const fibonacciAnnotations = high && low ? calculateFibonacciAnnotations(high, low, precisionValue) : [];
+    
+    console.log('Fibonacci annotations calculated:', {
+      count: fibonacciAnnotations.length,
+      high,
+      low,
+      range: high - low,
+      sample: fibonacciAnnotations.slice(0, 3)
+    });
+    
+    // Debug: Verify annotations are valid
+    if (fibonacciAnnotations.length > 0) {
+      console.log('First annotation structure:', JSON.stringify(fibonacciAnnotations[0], null, 2));
+      console.log('Last annotation structure:', JSON.stringify(fibonacciAnnotations[fibonacciAnnotations.length - 1], null, 2));
+    }
+    
     try {
-      // Create chart with proper dimensions
-      const chart = createChart(chartContainer, {
-        width: containerWidth || 800,
-        height: containerHeight || 600,
-        layout: { 
-          backgroundColor: isDarkMode ? '#1F2937' : '#ffffff', 
-          textColor: isDarkMode ? '#E5E7EB' : '#333' 
+      const options = {
+        series: [{
+          name: 'Price',
+          data: formattedData
+        }],
+        chart: {
+          type: 'candlestick',
+          width: containerWidth,
+          height: containerHeight,
+          toolbar: {
+            show: true,
+            tools: {
+              download: true,
+              selection: true,
+              zoom: true,
+              zoomin: true,
+              zoomout: true,
+              pan: true,
+              reset: true
+            }
+          },
+          zoom: {
+            enabled: true,
+            type: 'x',
+            autoScaleYaxis: true
+          }
         },
-        grid: { 
-          vertLines: { color: isDarkMode ? '#374151' : '#f0f0f0' }, 
-          horzLines: { color: isDarkMode ? '#374151' : '#f0f0f0' } 
+        plotOptions: {
+          candlestick: {
+            colors: {
+              upward: '#22C55E',
+              downward: '#EF4444'
+            }
+          }
         },
-        crosshair: { mode: CrosshairMode.Normal },
-        timeScale: { 
-          borderColor: isDarkMode ? '#374151' : '#cccccc',
-          timeVisible: true,
-          secondsVisible: false
+        xaxis: {
+          type: 'datetime',
+          labels: {
+            show: true,
+            style: {
+              colors: isDarkMode ? '#9ca3af' : '#6b7280',
+              fontSize: '12px',
+              fontFamily: 'Inter, ui-sans-serif',
+              fontWeight: 400
+            },
+            datetimeUTC: false,
+            format: 'MMM dd'
+          },
+          axisBorder: {
+            show: false
+          },
+          axisTicks: {
+            show: false
+          }
         },
-        rightPriceScale: {
-          visible: true,
-          borderColor: isDarkMode ? '#374151' : '#cccccc'
-        }
-      });
-
-      // Add candlestick series
-      const candlestickSeries = chart.addCandlestickSeries({
-        upColor: '#22C55E',
-        downColor: '#EF4444',
-        borderUpColor: '#22C55E',
-        borderDownColor: '#EF4444',
-        wickUpColor: '#22C55E',
-        wickDownColor: '#EF4444',
-      });
-
-      // Store references
-      chartRef.current = chart;
-      candlestickSeriesRef.current = candlestickSeries;
-
-      // Handle resize
-      const resizeObserver = new ResizeObserver(() => {
-        if (chartRef.current && chartContainer) {
-          const width = chartContainer.clientWidth || chartContainer.offsetWidth || 800;
-          const height = chartContainer.clientHeight || chartContainer.offsetHeight || 600;
-          if (width > 0 && height > 0) {
-            chartRef.current.applyOptions({ width, height });
+        yaxis: {
+          labels: {
+            style: {
+              colors: isDarkMode ? '#9ca3af' : '#6b7280',
+              fontSize: '12px',
+              fontFamily: 'Inter, ui-sans-serif',
+              fontWeight: 400
+            }
+          }
+        },
+        grid: {
+          borderColor: isDarkMode ? '#374151' : '#e5e7eb',
+          strokeDashArray: 2
+        },
+        ...(fibonacciAnnotations.length > 0 && {
+          annotations: {
+            yaxis: fibonacciAnnotations
+          }
+        }),
+        tooltip: {
+          enabled: true,
+          theme: isDarkMode ? 'dark' : 'light',
+          custom: function({ seriesIndex, dataPointIndex, w }) {
+            const data = w.globals.initialSeries[seriesIndex].data[dataPointIndex];
+            const date = new Date(data.x);
+            const dateStr = date.toLocaleDateString('en-US', { 
+              month: 'short', 
+              day: 'numeric',
+              year: 'numeric'
+            });
+            const [open, high, low, close] = data.y;
+            const precision = 2; // Use the component's precision state if needed
+            return `
+              <div class="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
+                <div class="text-xs font-semibold text-gray-900 dark:text-white mb-1">${dateStr}</div>
+                <div class="text-xs text-gray-600 dark:text-gray-400">
+                  <div>Open: <span class="font-semibold">${open.toFixed(precision)}</span></div>
+                  <div>High: <span class="font-semibold text-green-600">${high.toFixed(precision)}</span></div>
+                  <div>Low: <span class="font-semibold text-red-600">${low.toFixed(precision)}</span></div>
+                  <div>Close: <span class="font-semibold">${close.toFixed(precision)}</span></div>
+                </div>
+              </div>
+            `;
           }
         }
+      };
+      
+      const chart = new ApexCharts(chartContainer, options);
+      
+      // Store reference before rendering
+      chartRef.current = chart;
+      
+      // Render the chart
+      chart.render().then(() => {
+        console.log('ApexCharts rendered successfully with', fibonacciAnnotations.length, 'Fibonacci annotations');
+        if (fibonacciAnnotations.length > 0) {
+          console.log('First annotation:', fibonacciAnnotations[0]);
+        }
+      }).catch((error) => {
+        console.error('Error rendering ApexCharts:', error);
       });
       
-      resizeObserver.observe(chartContainer);
-      
-      console.log('Chart initialized successfully');
+      console.log('ApexCharts inline candles chart initialized successfully');
       return true;
     } catch (error) {
-      console.error('Error initializing chart:', error);
+      console.error('Error initializing ApexCharts:', error);
       return false;
     }
   };
 
-  // Test function with hardcoded data to verify chart works
-  const testChartWithHardcodedData = () => {
-    if (!candlestickSeriesRef.current) {
-      console.warn('Candlestick series not available for test');
-      return false;
-    }
-    
-    // Generate test data - 30 days of sample price data
-    const now = Math.floor(Date.now() / 1000);
-    const oneDay = 86400;
-    const testData = [];
-    let basePrice = 150;
-    
-    for (let i = 29; i >= 0; i--) {
-      const time = now - (i * oneDay);
-      const variation = (Math.random() - 0.5) * 10;
-      const open = basePrice + variation;
-      const close = open + (Math.random() - 0.5) * 5;
-      const high = Math.max(open, close) + Math.random() * 3;
-      const low = Math.min(open, close) - Math.random() * 3;
-      
-      testData.push({
-        time: time,
-        open: Number(open.toFixed(2)),
-        high: Number(high.toFixed(2)),
-        low: Number(low.toFixed(2)),
-        close: Number(close.toFixed(2))
-      });
-      
-      basePrice = close;
-    }
-    
-    console.log('Testing chart with hardcoded data:', testData.length, 'candles');
-    console.log('Sample test data:', testData.slice(0, 3));
-    
-    try {
-      candlestickSeriesRef.current.setData(testData);
-      if (chartRef.current) {
-        chartRef.current.timeScale().fitContent();
-      }
-      console.log('Test chart data set successfully');
-      return true;
-    } catch (error) {
-      console.error('Error setting test chart data:', error);
-      return false;
-    }
-  };
-
-  // Update chart with market data - fixed data format and validation
-  const updateChart = (chartData) => {
-    if (!candlestickSeriesRef.current) {
-      console.warn('Candlestick series not available');
-      return false;
-    }
-    
+  // Update chart with market data
+  const updateChart = (chartData, high, low, precisionValue = 2) => {
     if (!Array.isArray(chartData) || chartData.length === 0) {
       console.warn('No price data to show');
       return false;
     }
     
-    // Force correct format with strict validation
+    // Validate and format data
     const formattedData = chartData
       .map(item => {
         // Convert time to number (Unix timestamp in seconds)
@@ -434,7 +517,6 @@ function FIB() {
         if (typeof item.time === 'number') {
           timeValue = Math.floor(item.time);
         } else if (typeof item.time === 'string') {
-          // Handle ISO date strings or date strings
           const date = new Date(item.time);
           timeValue = Math.floor(date.getTime() / 1000);
           if (isNaN(timeValue)) {
@@ -446,7 +528,7 @@ function FIB() {
           return null;
         }
         
-        // Convert all price values to numbers (not strings)
+        // Convert all price values to numbers
         const open = Number(item.open);
         const high = Number(item.high);
         const low = Number(item.low);
@@ -473,111 +555,17 @@ function FIB() {
         };
       })
       .filter(item => item !== null)
-      .sort((a, b) => a.time - b.time); // Sort by time ascending
+      .sort((a, b) => a.time - b.time);
     
     if (formattedData.length === 0) {
-      console.error('No valid price data after formatting. Original data:', chartData.slice(0, 3));
+      console.error('No valid price data after formatting');
       return false;
     }
     
-    console.log('Setting chart data:', {
-      count: formattedData.length,
-      first: formattedData[0],
-      last: formattedData[formattedData.length - 1],
-      timeRange: `${formattedData[0].time} to ${formattedData[formattedData.length - 1].time}`
-    });
-    
-    try {
-      // This line is the one that actually makes the chart appear
-      candlestickSeriesRef.current.setData(formattedData);
-      
-      // Auto-scale after data is set
-      if (chartRef.current) {
-        chartRef.current.timeScale().fitContent();
-      }
-      
-      console.log('Chart data set successfully');
-      return true;
-    } catch (error) {
-      console.error('Error setting chart data:', error);
-      return false;
-    }
+    // Reinitialize chart with new data and Fibonacci levels
+    return initializeChart(formattedData, high, low, precisionValue);
   };
 
-  // Add current price line to chart
-  const addCurrentPriceLine = (currentPrice) => {
-    if (!candlestickSeriesRef.current || !currentPrice) return;
-    
-    try {
-      candlestickSeriesRef.current.createPriceLine({
-        price: currentPrice,
-        color: '#10B981',
-        lineWidth: 3,
-        lineStyle: LineStyle.Solid,
-        axisLabelVisible: true,
-        title: `Current: ${currentPrice.toFixed(2)}`,
-      });
-      console.log('Current price line added:', currentPrice);
-    } catch (e) {
-      console.error('Error adding current price line:', e);
-    }
-  };
-
-  // Add Fibonacci levels to chart
-  const addFibonacciLevelsToChart = (high, low) => {
-    if (!candlestickSeriesRef.current) return;
-    
-    // Note: lightweight-charts doesn't have a direct method to remove all price lines
-    // We'll just add them - if called multiple times, they'll stack (which is acceptable)
-    // For a cleaner solution, we could recreate the series, but that's more complex
-    
-    const range = high - low;
-    
-    // Key positive levels (BLUE)
-    const keyPositiveLevels = [
-      { ratio: 0, label: '0.0' },
-      { ratio: 1, label: '1.0' },
-      { ratio: 1.618, label: '1.618' },
-      { ratio: 2.618, label: '2.618' },
-      { ratio: 4.24, label: '4.24' }
-    ];
-    
-    keyPositiveLevels.forEach(level => {
-      const price = low + (range * level.ratio);
-      candlestickSeriesRef.current.createPriceLine({
-        price: price,
-        color: '#3B82F6',
-        lineWidth: level.ratio === 0 || level.ratio === 1 ? 2 : 1,
-        lineStyle: level.ratio === 0 || level.ratio === 1 ? LineStyle.Solid : LineStyle.Dashed,
-        axisLabelVisible: true,
-        title: level.label,
-      });
-    });
-    
-    // Key negative levels (RED)
-    const keyNegativeLevels = [
-      { ratio: -0.5, label: '-0.5' },
-      { ratio: -1, label: '-1.0' },
-      { ratio: -1.618, label: '-1.618' },
-      { ratio: -2.618, label: '-2.618' },
-      { ratio: -4.24, label: '-4.24' },
-      { ratio: -5.08, label: '-5.08' },
-      { ratio: -6.86, label: '-6.86' },
-      { ratio: -11.01, label: '-11.01' }
-    ];
-    
-    keyNegativeLevels.forEach(level => {
-      const price = low + (range * level.ratio);
-      candlestickSeriesRef.current.createPriceLine({
-        price: price,
-        color: '#EF4444',
-        lineWidth: 1,
-        lineStyle: LineStyle.Dashed,
-        axisLabelVisible: true,
-        title: level.label,
-      });
-    });
-  };
 
   // Calculate Fibonacci levels
   const calculateLevels = (high, low) => {
@@ -608,12 +596,11 @@ function FIB() {
     if (!showResults || !priceInfo || !priceInfo.chartData || !Array.isArray(priceInfo.chartData) || priceInfo.chartData.length === 0) {
       if (chartRef.current) {
         try {
-          chartRef.current.remove();
+          chartRef.current.destroy();
         } catch (e) {
           // Silent cleanup
         }
         chartRef.current = null;
-        candlestickSeriesRef.current = null;
       }
       setChartReady(false);
       return;
@@ -653,56 +640,21 @@ function FIB() {
       
       console.log('Container ready, initializing chart...', { containerWidth, containerHeight });
       
-      // Initialize chart if needed
-      if (!chartRef.current || !candlestickSeriesRef.current) {
-        const initialized = initializeChart();
-        if (!initialized) {
-          console.error('Chart initialization failed');
+      // Update chart with data (this will initialize if needed)
+      if (priceInfo.chartData && priceInfo.chartData.length > 0) {
+        console.log('Updating chart with', priceInfo.chartData.length, 'data points');
+        
+        const success = updateChart(priceInfo.chartData, priceInfo.high, priceInfo.low, precision);
+        
+        if (success) {
+          // Mark chart as ready
+          setChartReady(true);
+          console.log('Chart ready and displayed with Fibonacci levels');
+        } else {
+          console.error('Failed to update chart with data');
           setChartReady(false);
-          return;
         }
       }
-      
-      // Wait a frame to ensure chart is fully initialized
-      requestAnimationFrame(() => {
-        if (!isMounted || !candlestickSeriesRef.current) {
-          console.warn('Chart series no longer available');
-          return;
-        }
-        
-        // Update chart with data
-        if (priceInfo.chartData && priceInfo.chartData.length > 0) {
-          console.log('Updating chart with', priceInfo.chartData.length, 'data points');
-          
-          const success = updateChart(priceInfo.chartData);
-          
-          if (success) {
-            // Mark chart as ready
-            setChartReady(true);
-            console.log('Chart ready and displayed');
-            
-            // Add price lines after chart is rendered
-            setTimeout(() => {
-              if (isMounted && candlestickSeriesRef.current) {
-                try {
-                  if (priceInfo.current) {
-                    addCurrentPriceLine(priceInfo.current);
-                  }
-                  if (priceInfo.high && priceInfo.low) {
-                    addFibonacciLevelsToChart(priceInfo.high, priceInfo.low);
-                    console.log('Fibonacci levels added');
-                  }
-                } catch (e) {
-                  console.error('Error adding price lines:', e);
-                }
-              }
-            }, 300);
-          } else {
-            console.error('Failed to update chart with data');
-            setChartReady(false);
-          }
-        }
-      });
     };
     
     // Start initialization with a small delay to ensure DOM is ready
@@ -712,7 +664,7 @@ function FIB() {
       isMounted = false;
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [showResults, priceInfo?.chartData?.length, priceInfo?.high, priceInfo?.low]);
+  }, [showResults, priceInfo?.chartData?.length, priceInfo?.high, priceInfo?.low, precision]);
 
   // Auto-load on mount (like standalone version)
   useEffect(() => {
@@ -737,12 +689,11 @@ function FIB() {
     return () => {
       if (chartRef.current) {
         try {
-          chartRef.current.remove();
+          chartRef.current.destroy();
         } catch (e) {
-          console.warn('Error removing chart on unmount:', e);
+          console.warn('Error destroying chart on unmount:', e);
         }
         chartRef.current = null;
-        candlestickSeriesRef.current = null;
       }
     };
   }, []);
@@ -949,31 +900,32 @@ function FIB() {
               </div>
             )}
             {showResults && priceInfo && priceInfo.chartData && (
-              <div 
-                ref={chartContainerRef} 
-                className="w-full relative bg-white dark:bg-gray-800"
-                style={{ 
-                  height: '600px',
-                  width: '100%',
-                  minHeight: '600px',
-                  position: 'relative',
-                  display: 'block'
-                }}
-              >
-                {!chartReady && (
-                  <div 
-                    className="absolute inset-0 flex items-center justify-center text-gray-500 dark:text-gray-400 z-10 bg-white dark:bg-gray-800 rounded"
-                    style={{ 
-                      zIndex: 10,
-                      pointerEvents: 'none'
-                    }}
-                  >
-                    <div className="text-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-200 border-t-blue-600 mx-auto mb-2"></div>
-                      <p>Initializing chart...</p>
+              <div className="w-full">
+                <div 
+                  ref={chartContainerRef} 
+                  id="hs-sparklines-candles-chart"
+                  className="w-full"
+                  style={{ 
+                    height: '600px',
+                    minHeight: '600px',
+                    position: 'relative'
+                  }}
+                >
+                  {!chartReady && (
+                    <div 
+                      className="absolute inset-0 flex items-center justify-center text-gray-500 dark:text-gray-400 z-10 bg-white dark:bg-gray-800 rounded"
+                      style={{ 
+                        zIndex: 10,
+                        pointerEvents: 'none'
+                      }}
+                    >
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-200 border-t-blue-600 mx-auto mb-2"></div>
+                        <p>Initializing chart...</p>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             )}
           </div>
