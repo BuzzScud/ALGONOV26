@@ -1,16 +1,84 @@
-# React + Vite
+# Prime Tetration Trading Application
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A web application for financial market analysis and projections using advanced mathematical models.
 
-Currently, two official plugins are available:
+## Project Structure
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```
+/
+├── backend/              # Python backend server
+│   ├── server.py        # HTTP server with API proxy
+│   └── requirements.txt  # Python dependencies
+├── src/                 # React frontend application
+│   ├── components/      # React components
+│   ├── pages/          # Page components
+│   ├── services/       # API services
+│   ├── layouts/        # Layout components
+│   └── utils/          # Utility functions
+├── docs/               # Documentation
+│   ├── integration/     # Integration guides
+│   └── *.md            # Documentation files
+├── public/             # Static assets
+├── archive/            # Archived old workspace files
+└── dist/               # Build output (gitignored)
+```
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Real-time stock market data monitoring
+- Prime tetration-based price projections
+- Fibonacci retracement tools
+- News aggregation from multiple sources
+- API monitoring dashboard
+- Trading interface
+- Data visualization and charts
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Prerequisites
+
+- Node.js 18+ and npm
+- Python 3.7+
+
+### Frontend Setup
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+The frontend will be available at `http://localhost:5173`
+
+### Backend Setup
+
+```bash
+# Navigate to backend directory
+cd backend
+
+# Run the server (no dependencies required)
+python server.py
+```
+
+The backend will be available at `http://localhost:8080`
+
+## Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+- `npm run lint` - Run ESLint
+
+## Documentation
+
+See the `docs/` directory for detailed documentation:
+- Integration guides
+- Formula references
+- API setup instructions
+- Projection improvements
+
+## License
+
+See LICENSE file for details.

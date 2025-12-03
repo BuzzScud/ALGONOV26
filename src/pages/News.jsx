@@ -27,15 +27,33 @@ function News() {
     
     try {
       const result = await getNewsByCategory(category);
-      const sortedNews = (result.news || []).sort((a, b) => (b.datetime || 0) - (a.datetime || 0));
-      setNews(sortedNews);
-      setNewsSource(result.source);
-      setNewsSources(result.sources || []);
-      setLastRefresh(new Date());
+      
+      // Check if we got any news
+      if (!result.news || result.news.length === 0) {
+        // Check if there were errors
+        if (result.errors && result.errors.length > 0) {
+          const errorMessages = result.errors.map(e => `${e.source}: ${e.error}`).join(', ');
+          setError(`Failed to fetch news from all sources. ${errorMessages}. Please check your API keys in Settings.`);
+        } else {
+          setError('No news available at this time. Please try again later or check your API keys in Settings.');
+        }
+        setNews([]);
+        setNewsSource(null);
+        setNewsSources([]);
+      } else {
+        const sortedNews = (result.news || []).sort((a, b) => (b.datetime || 0) - (a.datetime || 0));
+        setNews(sortedNews);
+        setNewsSource(result.source);
+        setNewsSources(result.sources || []);
+        setLastRefresh(new Date());
+        setError(null); // Clear any previous errors
+      }
     } catch (err) {
       console.error('Error loading news:', err);
-      setError(err.message || 'Failed to load news. Please try again.');
+      setError(err.message || 'Failed to load news. Please check your API keys in Settings and try again.');
       setNews([]);
+      setNewsSource(null);
+      setNewsSources([]);
     } finally {
       setLoading(false);
     }
@@ -53,15 +71,33 @@ function News() {
     
     try {
       const result = await searchNews(query.trim());
-      const sortedNews = (result.news || []).sort((a, b) => (b.datetime || 0) - (a.datetime || 0));
-      setNews(sortedNews);
-      setNewsSource(result.source);
-      setNewsSources(result.sources || []);
-      setLastRefresh(new Date());
+      
+      // Check if we got any news
+      if (!result.news || result.news.length === 0) {
+        // Check if there were errors
+        if (result.errors && result.errors.length > 0) {
+          const errorMessages = result.errors.map(e => `${e.source}: ${e.error}`).join(', ');
+          setError(`No news found for "${query}". ${errorMessages}. Please check your API keys in Settings.`);
+        } else {
+          setError(`No news found for "${query}". Please try a different search term or check your API keys in Settings.`);
+        }
+        setNews([]);
+        setNewsSource(null);
+        setNewsSources([]);
+      } else {
+        const sortedNews = (result.news || []).sort((a, b) => (b.datetime || 0) - (a.datetime || 0));
+        setNews(sortedNews);
+        setNewsSource(result.source);
+        setNewsSources(result.sources || []);
+        setLastRefresh(new Date());
+        setError(null); // Clear any previous errors
+      }
     } catch (err) {
       console.error('Error searching news:', err);
-      setError(err.message || 'Failed to search news. Please try again.');
+      setError(err.message || `Failed to search news for "${query}". Please check your API keys in Settings and try again.`);
       setNews([]);
+      setNewsSource(null);
+      setNewsSources([]);
     } finally {
       setLoading(false);
       setIsSearching(false);

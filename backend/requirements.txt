@@ -1,0 +1,3 @@
+# Python Backend Dependencies
+# No external dependencies required - uses standard library only
+

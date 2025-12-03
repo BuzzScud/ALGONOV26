@@ -46,19 +46,97 @@ export const fetchFinnhubNews = async (category = 'general', symbol = null) => {
   try {
     const url = getFinnhubNewsUrl(category, symbol);
     
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Finnhub request timeout')), 10000)
+    );
+    
+    // Try direct fetch first
+    let response;
+    try {
+      const fetchPromise = fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        mode: 'cors',
+      });
+      response = await Promise.race([fetchPromise, timeoutPromise]);
+    } catch (fetchError) {
+      // If CORS fails, try using a CORS proxy
+      if (fetchError.message && (fetchError.message.includes('CORS') || fetchError.message.includes('Failed to fetch'))) {
+        console.warn('Direct Finnhub fetch failed, trying CORS proxy...');
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+        const proxyFetchPromise = fetch(proxyUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          },
+        });
+        response = await Promise.race([proxyFetchPromise, timeoutPromise]);
+        
+        if (!response.ok) {
+          throw new Error(`CORS proxy failed: ${response.status}`);
+        }
+        
+        const proxyData = await response.json();
+        if (!proxyData || !proxyData.contents) {
+          throw new Error('No contents from CORS proxy');
+        }
+        
+        // Parse the JSON from the proxy response
+        const data = JSON.parse(proxyData.contents);
+        
+        // Check for API error responses
+        if (data && typeof data === 'object' && data.error) {
+          throw new Error(data.error);
+        }
+        
+        if (!data || (Array.isArray(data) && data.length === 0)) {
+          return [];
+        }
+        
+        // Normalize Finnhub news format
+        if (Array.isArray(data)) {
+          return data.map(item => ({
+            id: item.id || `${item.headline}-${item.datetime}`,
+            title: item.headline || item.title || 'No title',
+            summary: item.summary || item.description || '',
+            source: item.source || 'Unknown',
+            url: item.url || item.link || '#',
+            image: item.image || null,
+            datetime: item.datetime * 1000 || Date.now(), // Convert Unix timestamp to milliseconds
+            category: item.category || category,
+            symbol: item.related || symbol || null,
+            sentiment: item.sentiment || null,
+            apiSource: 'finnhub',
+          }));
+        }
+        
+        return [];
+      } else {
+        throw fetchError;
+      }
+    }
     
     if (!response.ok) {
+      // Check if it's a rate limit or auth error
+      if (response.status === 429) {
+        throw new Error('Finnhub API rate limit exceeded. Please try again later.');
+      }
+      if (response.status === 401 || response.status === 403) {
+        throw new Error('Finnhub API key invalid. Please check your API key in Settings.');
+      }
       const errorText = await response.text().catch(() => 'Unknown error');
       throw new Error(`Failed to fetch news: ${response.status} ${response.statusText}. ${errorText}`);
     }
     
     const data = await response.json();
+    
+    // Check for API error responses
+    if (data && typeof data === 'object' && data.error) {
+      throw new Error(data.error);
+    }
     
     if (!data || (Array.isArray(data) && data.length === 0)) {
       return [];
@@ -77,13 +155,15 @@ export const fetchFinnhubNews = async (category = 'general', symbol = null) => {
         category: item.category || category,
         symbol: item.related || symbol || null,
         sentiment: item.sentiment || null,
+        apiSource: 'finnhub',
       }));
     }
     
     return [];
   } catch (error) {
     console.error('Error fetching news from Finnhub:', error);
-    throw error;
+    // Don't throw - return empty array so other sources can still work
+    return [];
   }
 };
 
@@ -212,6 +292,7 @@ export const fetchFibhubNews = async (category = 'general', symbol = null) => {
         category: item.category || category,
         symbol: item.related || item.symbol || symbol || null,
         sentiment: item.sentiment || null,
+        apiSource: 'fibhub',
       };
     });
   } catch (error) {
@@ -308,6 +389,7 @@ export const fetchYahooFinanceNews = async (category = 'general') => {
           category: category,
           symbol: null,
           sentiment: null,
+          apiSource: 'yahoo',
         });
       } catch (itemError) {
         console.warn('Error parsing Yahoo Finance news item:', itemError);
@@ -362,7 +444,7 @@ export const fetchMarketNews = async (category = 'general', symbol = null) => {
         .then(news => {
           if (news && news.length > 0) {
             sources.push('finnhub');
-            return news.map(item => ({ ...item, apiSource: 'finnhub' }));
+            return news;
           }
           return [];
         })
@@ -374,12 +456,13 @@ export const fetchMarketNews = async (category = 'general', symbol = null) => {
     );
     
     // Try Fibhub (always attempt, but don't fail if it errors)
+    // Note: Fibhub API may not be available, so this is optional
     promises.push(
       fetchFibhubNews(category, symbol)
         .then(news => {
           if (news && news.length > 0) {
             sources.push('fibhub');
-            return news.map(item => ({ ...item, apiSource: 'fibhub' }));
+            return news;
           }
           return [];
         })
@@ -397,7 +480,7 @@ export const fetchMarketNews = async (category = 'general', symbol = null) => {
           .then(news => {
             if (news && news.length > 0) {
               sources.push('yahoo');
-              return news.map(item => ({ ...item, apiSource: 'yahoo' }));
+              return news;
             }
             return [];
           })
@@ -490,7 +573,7 @@ export const searchNews = async (keyword) => {
           fetchFinnhubNews('general', trimmedKeyword)
           .then(news => {
             if (news && news.length > 0) {
-              return news.map(item => ({ ...item, apiSource: 'finnhub' }));
+              return news;
             }
             return [];
           })
@@ -498,7 +581,7 @@ export const searchNews = async (keyword) => {
           fetchFibhubNews('general', trimmedKeyword)
             .then(news => {
               if (news && news.length > 0) {
-                return news.map(item => ({ ...item, apiSource: 'fibhub' }));
+                return news;
               }
               return [];
             })
