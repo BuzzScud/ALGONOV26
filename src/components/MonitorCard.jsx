@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import MonitorChart from './MonitorChart';
 
-function MonitorCard({ monitor, onEdit, onDelete, onTogglePause }) {
+function MonitorCard({ monitor, onEdit, onDelete, onTogglePause, onSelect, selected }) {
   const [showChart, setShowChart] = useState(false);
 
   // UptimeKit status calculation based on response time
@@ -32,7 +32,7 @@ function MonitorCard({ monitor, onEdit, onDelete, onTogglePause }) {
   const statusText = status.text;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow p-4 transition-all ${selected ? 'ring-2 ring-blue-500 dark:ring-blue-400' : ''} ${onSelect ? 'cursor-pointer hover:shadow-lg' : ''}`} onClick={onSelect}>
       <div className="flex justify-between items-start mb-4">
         <div className="flex-1">
           <h3 className="text-base font-semibold text-gray-800 dark:text-white mb-1">
@@ -140,32 +140,44 @@ function MonitorCard({ monitor, onEdit, onDelete, onTogglePause }) {
         </div>
       )}
 
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
-          onClick={() => setShowChart(!showChart)}
-          className="flex-1 min-w-[100px] py-1.5 px-2 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowChart(!showChart);
+          }}
+          className="flex-1 min-w-[100px] py-1.5 px-2 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
         >
           {showChart ? 'Hide Chart' : 'Show Chart'}
         </button>
         <button
           type="button"
-          onClick={() => onTogglePause(monitor.id)}
-          className="py-1.5 px-2 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
+          onClick={(e) => {
+            e.stopPropagation();
+            onTogglePause(monitor.id);
+          }}
+          className="py-1.5 px-2 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
         >
           {monitor.paused ? 'Resume' : 'Pause'}
         </button>
         <button
           type="button"
-          onClick={() => onEdit(monitor)}
-          className="py-1.5 px-2 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit(monitor);
+          }}
+          className="py-1.5 px-2 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
         >
           Edit
         </button>
         <button
           type="button"
-          onClick={() => onDelete(monitor.id)}
-          className="py-1.5 px-2 text-xs font-medium text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(monitor.id);
+          }}
+          className="py-1.5 px-2 text-xs font-medium text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
         >
           Delete
         </button>
