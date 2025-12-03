@@ -1,4 +1,4 @@
-import { NavLink, Link } from 'react-router-dom';
+import { NavLink, Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import UserProfile from './UserProfile';
 import SidebarClock from './SidebarClock';
@@ -23,6 +23,8 @@ const COMMON_TIMEZONES = [
 ];
 
 function Sidebar() {
+  const location = useLocation();
+  
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode');
     return saved ? JSON.parse(saved) : false;
@@ -96,8 +98,8 @@ function Sidebar() {
     { path: '/news', label: 'News' },
     { path: '/trading', label: 'Charts' },
     { path: '/notes', label: 'Notes' },
-    { path: '/projection', label: 'Projection' },
     { path: '/projection/fib', label: 'FIB' },
+    { path: '/projection', label: 'Projection' },
     { path: '/data', label: 'Data' },
     { path: '/api', label: 'API' },
     { path: '/settings', label: 'Settings' },
@@ -147,20 +149,39 @@ function Sidebar() {
         data-hs-accordion-always-open
       >
         <ul className="space-y-1.5">
-          {navItems.map((item) => (
-            <li key={item.path}>
-              <NavLink
-                to={item.path}
-                className={({ isActive }) =>
-                  `flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 ${
-                    isActive ? 'bg-gray-100 dark:bg-gray-800' : ''
-                  }`
-                }
-              >
-                <span>{item.label}</span>
-              </NavLink>
-            </li>
-          ))}
+          {navItems.map((item) => {
+            // Check if current path matches nav item path
+            // Special handling for nested routes - check exact matches first
+            let isActive = false;
+            
+            if (item.path === '/') {
+              // For root path, only match exactly
+              isActive = location.pathname === '/';
+            } else if (item.path === '/projection') {
+              // For /projection, only match if it's exactly /projection (not /projection/fib)
+              isActive = location.pathname === '/projection';
+            } else if (item.path === '/projection/fib') {
+              // For /projection/fib, match exactly
+              isActive = location.pathname === '/projection/fib';
+            } else {
+              // For other paths, match exact or if pathname starts with path + '/'
+              isActive = location.pathname === item.path || 
+                location.pathname.startsWith(item.path + '/');
+            }
+            
+            return (
+              <li key={item.path}>
+                <NavLink
+                  to={item.path}
+                  className={`flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 ${
+                    isActive ? 'bg-gray-100 dark:bg-gray-800 font-semibold' : ''
+                  }`}
+                >
+                  <span>{item.label}</span>
+                </NavLink>
+              </li>
+            );
+          })}
         </ul>
       </nav>
 
