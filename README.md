@@ -6,21 +6,38 @@ A web application for financial market analysis and projections using advanced m
 
 ```
 /
-├── backend/              # Python backend server
-│   ├── server.py        # HTTP server with API proxy
-│   └── requirements.txt  # Python dependencies
-├── src/                 # React frontend application
-│   ├── components/      # React components
-│   ├── pages/          # Page components
-│   ├── services/       # API services
-│   ├── layouts/        # Layout components
-│   └── utils/          # Utility functions
-├── docs/               # Documentation
-│   ├── integration/     # Integration guides
-│   └── *.md            # Documentation files
-├── public/             # Static assets
-├── archive/            # Archived old workspace files
-└── dist/               # Build output (gitignored)
+├── backend/                    # Python backend server
+│   ├── server.py              # HTTP server with API proxy
+│   ├── requirements.txt       # Python dependencies
+│   └── README.md              # Backend documentation
+├── src/                       # React frontend application
+│   ├── components/            # Reusable React components
+│   ├── pages/                # Page components (routes)
+│   ├── services/             # API services and data fetching
+│   ├── layouts/              # Layout components
+│   ├── styles/               # Page-specific styles
+│   ├── utils/                # Utility functions
+│   ├── assets/               # Static assets (images, etc.)
+│   ├── App.jsx               # Main app component
+│   ├── App.css               # Global app styles
+│   ├── index.css             # Base styles
+│   └── main.jsx              # Entry point
+├── docs/                      # Documentation
+│   ├── deployment/           # Deployment guides and checklists
+│   ├── debugging/            # Debugging guides and fixes
+│   ├── development/          # Development documentation
+│   ├── integration/         # Integration guides and references
+│   ├── assets/               # Documentation assets (PDFs, etc.)
+│   └── *.md                  # General documentation files
+├── config/                    # Configuration files
+│   └── nginx.conf            # Nginx server configuration
+├── scripts/                   # Build and utility scripts
+│   └── update-htaccess.js    # Post-build script for .htaccess
+├── public/                    # Public static assets
+├── archive/                   # Archived old workspace files
+│   └── old-workspaces/       # Legacy project files
+├── dist/                      # Build output (gitignored)
+└── [config files]             # Root config files (package.json, vite.config.js, etc.)
 ```
 
 ## Features
@@ -74,10 +91,12 @@ The backend will be available at `http://localhost:8080`
 ## Documentation
 
 See the `docs/` directory for detailed documentation:
-- Integration guides
-- Formula references
-- API setup instructions
-- Projection improvements
+
+- **Deployment** (`docs/deployment/`): Deployment guides, checklists, and server configuration
+- **Debugging** (`docs/debugging/`): Debugging guides, fixes, and troubleshooting
+- **Development** (`docs/development/`): Development documentation and production readiness
+- **Integration** (`docs/integration/`): Integration guides and formula references
+- **General** (`docs/*.md`): Formula refinements, projection improvements, and other documentation
 
 ## License
 

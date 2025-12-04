@@ -1,6 +1,6 @@
 /* Fibonacci Calculator Styles */
 .fib-container {
-  max-width: 1800px;
+  max-width: 1280px; /* Match max-w-7xl (1280px) for consistency */
   margin: 0 auto;
   padding: 20px 40px;
 }
@@ -420,7 +420,7 @@
   }
   
   .fib-container {
-    max-width: 1400px;
+    max-width: 1280px; /* Keep consistent with max-w-7xl */
   }
 }
 
