@@ -1,14 +1,21 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  // Use relative paths for assets - works in any deployment location
-  // For subdirectory deployment at /trading/, assets will be loaded correctly
-  base: './',
+  base: '/',                          // critical for root-domain deployments
+  build: {
+    outDir: 'dist',
+    sourcemap: false,                 // disable in production – stops exposing /src/*.jsx paths
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
+  },
   server: {
     port: 5173,
+    sourcemap: true,                  // keep enabled only for local dev
     strictPort: false,
     open: false,
     proxy: {
@@ -54,24 +61,5 @@ export default defineConfig({
         },
       },
     },
-  },
-  build: {
-    sourcemap: true,
-    // Optimize chunk splitting for better performance
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          // Separate vendor chunks
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'chart-vendor': ['chart.js', 'react-chartjs-2', 'chartjs-plugin-zoom', 'chartjs-chart-financial'],
-          'ui-vendor': ['apexcharts', 'lightweight-charts', '@dnd-kit/core', '@dnd-kit/sortable'],
-          'utils-vendor': ['lodash', 'pdfjs-dist', 'react-pdf'],
-        },
-      },
-    },
-    // Increase chunk size warning limit
-    chunkSizeWarningLimit: 1000,
-    // Optimize for production (esbuild is faster and doesn't require additional dependencies)
-    minify: 'esbuild',
   },
 })
