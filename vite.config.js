@@ -37,6 +37,8 @@ export default defineConfig({
     port: 5173,
     strictPort: false,
     open: false,
+    // Enable source maps in development (always enabled by default)
+    // This ensures VS Code can properly map breakpoints
     proxy: {
       '/api/yahoo': {
         target: 'https://query1.finance.yahoo.com',
