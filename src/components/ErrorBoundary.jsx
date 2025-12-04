@@ -24,7 +24,10 @@ class ErrorBoundary extends React.Component {
 
   handleReset = () => {
     this.setState({ hasError: false, error: null, errorInfo: null });
-    window.location.href = '/';
+    // Detect base path for subdirectory deployment
+    const path = window.location.pathname;
+    const basePath = path.startsWith('/trading') ? '/trading' : '/';
+    window.location.href = basePath;
   };
 
   render() {

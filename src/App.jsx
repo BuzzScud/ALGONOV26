@@ -12,9 +12,36 @@ import FIB from './pages/FIB';
 import Notes from './pages/Notes';
 
 function App() {
+  // Detect base path from current location for subdirectory deployment
+  // If deployed to /trading/, the basename will be /trading
+  const getBasename = () => {
+    if (typeof window === 'undefined') return '/';
+    
+    const path = window.location.pathname;
+    
+    // Explicit check for /trading subdirectory
+    if (path.startsWith('/trading')) {
+      return '/trading';
+    }
+    
+    // Auto-detect subdirectory: if path has multiple segments and first isn't a known route
+    const pathParts = path.split('/').filter(Boolean);
+    const knownRoutes = ['news', 'trading', 'notes', 'projection', 'data', 'api', 'settings'];
+    
+    // If first part is not a known route, it's likely a subdirectory
+    if (pathParts.length > 0 && !knownRoutes.includes(pathParts[0]) && pathParts[0] !== 'index.html') {
+      return `/${pathParts[0]}`;
+    }
+    
+    // Default to root
+    return '/';
+  };
+
+  const basename = getBasename();
+
   return (
     <ErrorBoundary>
-      <BrowserRouter>
+      <BrowserRouter basename={basename}>
         <Routes>
           <Route path="/" element={<MainLayout />}>
             <Route index element={<Dashboard />} />
