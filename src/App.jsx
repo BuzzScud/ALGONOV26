@@ -18,14 +18,20 @@ function App() {
     if (typeof window === 'undefined') return '/';
     
     const path = window.location.pathname;
+    const pathParts = path.split('/').filter(Boolean);
     
-    // Explicit check for /trading subdirectory
+    // Explicit check for /trading subdirectory - must be first segment
+    // This handles: /trading, /trading/, /trading/news, etc.
+    if (pathParts.length > 0 && pathParts[0] === 'trading') {
+      return '/trading';
+    }
+    
+    // Also check the full path for exact matches
     if (path.startsWith('/trading')) {
       return '/trading';
     }
     
     // Auto-detect subdirectory: if path has multiple segments and first isn't a known route
-    const pathParts = path.split('/').filter(Boolean);
     const knownRoutes = ['news', 'trading', 'notes', 'projection', 'data', 'api', 'settings'];
     
     // If first part is not a known route, it's likely a subdirectory
@@ -38,6 +44,11 @@ function App() {
   };
 
   const basename = getBasename();
+  
+  // Debug logging in development
+  if (import.meta.env.DEV) {
+    console.log('Detected basename:', basename, 'from path:', window.location.pathname);
+  }
 
   return (
     <ErrorBoundary>
