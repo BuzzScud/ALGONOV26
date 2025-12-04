@@ -7,6 +7,8 @@ export default defineConfig({
   // Use relative paths for assets - works in any deployment location
   // For subdirectory deployment at /trading/, assets will be loaded correctly
   base: './',
+  // Enable source maps for debugging (always enabled in dev, configurable for build)
+  // Source maps are essential for VS Code breakpoints to work
   build: {
     // Optimize chunk splitting for better performance
     rollupOptions: {
@@ -22,12 +24,19 @@ export default defineConfig({
     },
     // Increase chunk size warning limit
     chunkSizeWarningLimit: 1000,
-    // Enable source maps for production debugging (optional, can disable for smaller builds)
-    sourcemap: false,
+    // Source maps: 'inline' for debugging, false for production, 'hidden' for error tracking only
+    // For debugging, use 'inline' or true. For production, set to false to reduce bundle size
+    sourcemap: process.env.NODE_ENV === 'production' ? false : 'inline',
     // Optimize for production (esbuild is faster and doesn't require additional dependencies)
     minify: 'esbuild',
   },
+  // Development server configuration for debugging
   server: {
+    // Source maps are automatically enabled in dev mode
+    sourcemapIgnoreList: false,
+    port: 5173,
+    strictPort: false,
+    open: false,
     proxy: {
       '/api/yahoo': {
         target: 'https://query1.finance.yahoo.com',
