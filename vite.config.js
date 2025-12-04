@@ -7,38 +7,11 @@ export default defineConfig({
   // Use relative paths for assets - works in any deployment location
   // For subdirectory deployment at /trading/, assets will be loaded correctly
   base: './',
-  // Enable source maps for debugging (always enabled in dev, configurable for build)
-  // Source maps are essential for VS Code breakpoints to work
-  build: {
-    // Optimize chunk splitting for better performance
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          // Separate vendor chunks
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'chart-vendor': ['chart.js', 'react-chartjs-2', 'chartjs-plugin-zoom', 'chartjs-chart-financial'],
-          'ui-vendor': ['apexcharts', 'lightweight-charts', '@dnd-kit/core', '@dnd-kit/sortable'],
-          'utils-vendor': ['lodash', 'pdfjs-dist', 'react-pdf'],
-        },
-      },
-    },
-    // Increase chunk size warning limit
-    chunkSizeWarningLimit: 1000,
-    // Source maps: 'inline' for debugging, false for production, 'hidden' for error tracking only
-    // For debugging, use 'inline' or true. For production, set to false to reduce bundle size
-    sourcemap: process.env.NODE_ENV === 'production' ? false : 'inline',
-    // Optimize for production (esbuild is faster and doesn't require additional dependencies)
-    minify: 'esbuild',
-  },
-  // Development server configuration for debugging
   server: {
-    // Source maps are automatically enabled in dev mode
-    sourcemapIgnoreList: false,
+    sourcemap: true,           // ← important for dev server
     port: 5173,
     strictPort: false,
     open: false,
-    // Enable source maps in development (always enabled by default)
-    // This ensures VS Code can properly map breakpoints
     proxy: {
       '/api/yahoo': {
         target: 'https://query1.finance.yahoo.com',
@@ -82,5 +55,24 @@ export default defineConfig({
         },
       },
     },
+  },
+  build: {
+    sourcemap: true,            // ← optional, only if you debug production build
+    // Optimize chunk splitting for better performance
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Separate vendor chunks
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'chart-vendor': ['chart.js', 'react-chartjs-2', 'chartjs-plugin-zoom', 'chartjs-chart-financial'],
+          'ui-vendor': ['apexcharts', 'lightweight-charts', '@dnd-kit/core', '@dnd-kit/sortable'],
+          'utils-vendor': ['lodash', 'pdfjs-dist', 'react-pdf'],
+        },
+      },
+    },
+    // Increase chunk size warning limit
+    chunkSizeWarningLimit: 1000,
+    // Optimize for production (esbuild is faster and doesn't require additional dependencies)
+    minify: 'esbuild',
   },
 })

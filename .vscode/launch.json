@@ -2,85 +2,20 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug React App (Vite) - Localhost",
+      "name": "Debug with Chrome",
       "type": "chrome",
       "request": "launch",
       "url": "http://localhost:5173",
-      "webRoot": "${workspaceFolder}",
+      "webRoot": "${workspaceFolder}/src",
       "sourceMaps": true,
-      "sourceMapPathOverrides": {
-        "/src/*": "${webRoot}/src/*",
-        "/@fs/*": "${workspaceFolder}/*",
-        "/@vite/*": "${workspaceFolder}/*"
-      },
-      "pathMapping": {
-        "/": "${workspaceFolder}",
-        "/src": "${workspaceFolder}/src"
-      },
-      "skipFiles": [
-        "<node_internals>/**",
-        "${workspaceFolder}/node_modules/**"
-      ],
-      "preLaunchTask": "npm: dev"
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
     },
     {
-      "name": "Attach to Chrome - Localhost",
-      "type": "chrome",
-      "request": "attach",
-      "port": 9222,
-      "webRoot": "${workspaceFolder}",
-      "sourceMaps": true,
-      "sourceMapPathOverrides": {
-        "/src/*": "${webRoot}/src/*",
-        "/@fs/*": "${workspaceFolder}/*",
-        "/@vite/*": "${workspaceFolder}/*"
-      },
-      "pathMapping": {
-        "/": "${workspaceFolder}",
-        "/src": "${workspaceFolder}/src"
-      }
-    },
-    {
-      "name": "Debug Production - voynich.online/trading",
-      "type": "chrome",
+      "name": "Launch Chrome",
       "request": "launch",
-      "url": "https://voynich.online/trading/",
-      "webRoot": "${workspaceFolder}",
-      "sourceMaps": true,
-      "sourceMapPathOverrides": {
-        "/trading/src/*": "${webRoot}/src/*",
-        "/src/*": "${webRoot}/src/*",
-        "/@fs/*": "${workspaceFolder}/*",
-        "/@vite/*": "${workspaceFolder}/*"
-      },
-      "pathMapping": {
-        "/trading": "${workspaceFolder}",
-        "/trading/src": "${workspaceFolder}/src",
-        "/": "${workspaceFolder}",
-        "/src": "${workspaceFolder}/src"
-      },
-      "skipFiles": [
-        "<node_internals>/**",
-        "${workspaceFolder}/node_modules/**"
-      ],
-      "runtimeArgs": [
-        "--disable-web-security",
-        "--disable-features=IsolateOrigins,site-per-process"
-      ]
-    },
-    {
-      "name": "Debug Production Build - Preview",
       "type": "chrome",
-      "request": "launch",
-      "url": "http://localhost:4173",
-      "webRoot": "${workspaceFolder}",
-      "sourceMaps": true,
-      "sourceMapPathOverrides": {
-        "/src/*": "${webRoot}/src/*",
-        "/@fs/*": "${workspaceFolder}/*"
-      },
-      "preLaunchTask": "npm: preview"
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/src"
     }
   ]
 }
-
