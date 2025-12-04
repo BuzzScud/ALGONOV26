@@ -8,7 +8,6 @@ export default defineConfig({
   // For subdirectory deployment at /trading/, assets will be loaded correctly
   base: './',
   server: {
-    sourcemap: true,           // ← important for dev server
     port: 5173,
     strictPort: false,
     open: false,
@@ -57,7 +56,7 @@ export default defineConfig({
     },
   },
   build: {
-    sourcemap: true,            // ← optional, only if you debug production build
+    sourcemap: true,
     // Optimize chunk splitting for better performance
     rollupOptions: {
       output: {

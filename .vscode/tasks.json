@@ -4,20 +4,9 @@
     {
       "type": "npm",
       "script": "dev",
+      "problemMatcher": [],
       "label": "npm: dev",
       "detail": "vite",
-      "problemMatcher": [],
-      "isBackground": true,
-      "runOptions": {
-        "runOn": "default"
-      }
-    },
-    {
-      "type": "npm",
-      "script": "preview",
-      "label": "npm: preview",
-      "detail": "vite preview",
-      "problemMatcher": [],
       "isBackground": true,
       "runOptions": {
         "runOn": "default"
@@ -25,4 +14,3 @@
     }
   ]
 }
-

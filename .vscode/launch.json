@@ -2,20 +2,42 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug with Chrome",
+      "name": "Debug Vite React App",
       "type": "chrome",
       "request": "launch",
       "url": "http://localhost:5173",
       "webRoot": "${workspaceFolder}/src",
       "sourceMaps": true,
-      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+      "trace": true,
+      "disableContentValidation": true,
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/**",
+        "!**/node_modules/**"
+      ],
+      "pathMapping": {
+        "/": "${workspaceFolder}",
+        "/src": "${workspaceFolder}/src"
+      },
+      "preLaunchTask": "npm: dev"
     },
     {
-      "name": "Launch Chrome",
-      "request": "launch",
+      "name": "Debug Vite React App (Attach)",
       "type": "chrome",
+      "request": "attach",
+      "port": 9222,
       "url": "http://localhost:5173",
-      "webRoot": "${workspaceFolder}/src"
+      "webRoot": "${workspaceFolder}/src",
+      "sourceMaps": true,
+      "trace": true,
+      "disableContentValidation": true,
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/**",
+        "!**/node_modules/**"
+      ],
+      "pathMapping": {
+        "/": "${workspaceFolder}",
+        "/src": "${workspaceFolder}/src"
+      }
     }
   ]
 }
