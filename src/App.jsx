@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import ErrorBoundary from './components/ErrorBoundary';
 import MainLayout from './layouts/MainLayout';
 import Dashboard from './pages/Dashboard';
 import News from './pages/News';
@@ -12,24 +13,26 @@ import Notes from './pages/Notes';
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<MainLayout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="news" element={<News />} />
-          <Route path="trading" element={<Trading />} />
-          <Route path="notes" element={<Notes />} />
-          <Route path="projection">
-            <Route index element={<Projection />} />
-            <Route path="fib" element={<FIB />} />
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<MainLayout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="news" element={<News />} />
+            <Route path="trading" element={<Trading />} />
+            <Route path="notes" element={<Notes />} />
+            <Route path="projection">
+              <Route index element={<Projection />} />
+              <Route path="fib" element={<FIB />} />
+            </Route>
+            <Route path="data" element={<Data />} />
+            <Route path="api" element={<API />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
-          <Route path="data" element={<Data />} />
-          <Route path="api" element={<API />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 

@@ -27,3 +27,4 @@ The server will start on port 8080 by default.
 - Automatic timeout handling (10 seconds)
 - Error handling for API failures
 
+

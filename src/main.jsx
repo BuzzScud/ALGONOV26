@@ -18,6 +18,9 @@ if (typeof window !== 'undefined') {
       module.default();
     }
   }).catch((error) => {
-    console.warn('Preline UI could not be loaded:', error);
+    // Only log in development to avoid console noise in production
+    if (import.meta.env.DEV) {
+      console.warn('Preline UI could not be loaded:', error);
+    }
   });
 }

@@ -5,6 +5,26 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: './', // Use relative paths for assets - works in any deployment location
+  build: {
+    // Optimize chunk splitting for better performance
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Separate vendor chunks
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'chart-vendor': ['chart.js', 'react-chartjs-2', 'chartjs-plugin-zoom', 'chartjs-chart-financial'],
+          'ui-vendor': ['apexcharts', 'lightweight-charts', '@dnd-kit/core', '@dnd-kit/sortable'],
+          'utils-vendor': ['lodash', 'pdfjs-dist', 'react-pdf'],
+        },
+      },
+    },
+    // Increase chunk size warning limit
+    chunkSizeWarningLimit: 1000,
+    // Enable source maps for production debugging (optional, can disable for smaller builds)
+    sourcemap: false,
+    // Optimize for production (esbuild is faster and doesn't require additional dependencies)
+    minify: 'esbuild',
+  },
   server: {
     proxy: {
       '/api/yahoo': {
