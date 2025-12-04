@@ -1,15 +1,22 @@
-# Apache configuration for React Router SPA deployed to /trading/ subdirectory
+# Apache configuration for React Router SPA deployed to root domain
 
 # Enable rewrite engine
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  RewriteBase /trading/
+  RewriteBase /
+  
+  # Block direct access to source files in production (prevent 404 errors)
+  RewriteRule ^src/ - [F,L]
+  
+  # Redirect any /src/main.jsx requests to index.html (let the app handle routing)
+  RewriteCond %{REQUEST_URI} ^/src/
+  RewriteRule ^.*$ /index.html [L]
   
   # Don't rewrite files or directories that exist
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   
-  # Rewrite everything else to index.html
+  # Rewrite everything else to index.html (for React Router)
   RewriteRule ^ index.html [L]
 </IfModule>
 
