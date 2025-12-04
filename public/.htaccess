@@ -5,9 +5,10 @@
   RewriteEngine On
   RewriteBase /
   
-  # Redirect /src/main.jsx requests to index.html (loads correct bundled JS from js/ directory)
+  # Redirect /src/main.jsx requests to the actual built JS file
+  # This fixes the 404 error when source index.html is accidentally served
   RewriteCond %{REQUEST_URI} ^/src/main\.jsx$
-  RewriteRule ^.*$ /index.html [L]
+  RewriteRule ^.*$ /js/index-JNIiQMoG.js [L]
   
   # Block direct access to other source files in production (prevent 404 errors)
   RewriteCond %{REQUEST_URI} ^/src/
