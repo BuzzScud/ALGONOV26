@@ -5,12 +5,13 @@
   RewriteEngine On
   RewriteBase /
   
-  # Block direct access to source files in production (prevent 404 errors)
-  RewriteRule ^src/ - [F,L]
-  
-  # Redirect any /src/main.jsx requests to index.html (let the app handle routing)
-  RewriteCond %{REQUEST_URI} ^/src/
+  # Redirect /src/main.jsx requests to index.html (loads correct bundled JS from js/ directory)
+  RewriteCond %{REQUEST_URI} ^/src/main\.jsx$
   RewriteRule ^.*$ /index.html [L]
+  
+  # Block direct access to other source files in production (prevent 404 errors)
+  RewriteCond %{REQUEST_URI} ^/src/
+  RewriteRule ^.*$ - [F,L]
   
   # Don't rewrite files or directories that exist
   RewriteCond %{REQUEST_FILENAME} !-f
