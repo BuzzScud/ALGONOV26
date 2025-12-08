@@ -39,38 +39,16 @@
   ExpiresByType image/svg+xml "access plus 1 year"
 </IfModule>
 
-# MIME types - CRITICAL for JavaScript modules (must come before security headers)
-<IfModule mod_mime.c>
-  # JavaScript files - set MIME type explicitly
-  AddType application/javascript js
-  AddType application/javascript mjs
-  AddType application/javascript jsx
-  
-  # CSS files
-  AddType text/css css
-  
-  # Force MIME type for all JS files
-  <FilesMatch "\.js$">
-    ForceType application/javascript
-  </FilesMatch>
-  
-  # Force MIME type for module JS files
-  <FilesMatch "\.mjs$">
-    ForceType application/javascript
-  </FilesMatch>
-</IfModule>
-
-# Force correct MIME type for JavaScript files using headers (before security headers)
-<IfModule mod_headers.c>
-  <FilesMatch "\.(js|mjs)$">
-    Header set Content-Type "application/javascript; charset=utf-8"
-  </FilesMatch>
-</IfModule>
-
 # Security headers
 <IfModule mod_headers.c>
   Header set X-Content-Type-Options "nosniff"
   Header set X-Frame-Options "SAMEORIGIN"
   Header set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# MIME types
+<IfModule mod_mime.c>
+  AddType application/javascript js
+  AddType text/css css
 </IfModule>
 
