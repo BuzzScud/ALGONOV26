@@ -9,7 +9,6 @@
       "webRoot": "${workspaceFolder}/src",
       "sourceMaps": true,
       "trace": true,
-      "disableContentValidation": true,
       "resolveSourceMapLocations": ["**/*"],
       "sourceMapPathOverrides": {
         "webpack:///./*": "${webRoot}/*"
