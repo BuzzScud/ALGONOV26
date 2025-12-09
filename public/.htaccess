@@ -40,7 +40,7 @@
   # Handle both absolute (/src/main.jsx) and relative (src/main.jsx) paths
   RewriteCond %{REQUEST_URI} /src/main\.jsx$ [OR]
   RewriteCond %{REQUEST_URI} ^src/main\.jsx$
-  RewriteRule ^.*$ assets/index-Cfac9lx9.js [L]
+  RewriteRule ^.*$ assets/index-w6t913WG.js [L]
   
   # Block direct access to other source files in production (prevent 404 errors)
   RewriteCond %{REQUEST_URI} /src/

@@ -7,37 +7,17 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,                 // disable in production – stops exposing /src/*.jsx paths
-    chunkSizeWarningLimit: 600,       // Increase limit slightly since we're splitting properly
+    chunkSizeWarningLimit: 1000,      // Increase limit for single vendor chunk
     rollupOptions: {
       output: {
-        // Manual code splitting for better performance
-        manualChunks: (id) => {
-          // React and React DOM vendor chunk
-          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
-            return 'vendor-react';
-          }
-          // Chart.js vendor chunk (large library)
-          if (id.includes('node_modules/chart.js') || 
-              id.includes('node_modules/react-chartjs-2') ||
-              id.includes('node_modules/chartjs-')) {
-            return 'vendor-charts';
-          }
-          // PDF.js vendor chunk (very large library)
-          if (id.includes('node_modules/pdfjs-dist') || id.includes('node_modules/react-pdf')) {
-            return 'vendor-pdf';
-          }
-          // Lightweight charts vendor chunk
-          if (id.includes('node_modules/lightweight-charts')) {
-            return 'vendor-lwc';
-          }
-          // ApexCharts vendor chunk
-          if (id.includes('node_modules/apexcharts')) {
-            return 'vendor-apex';
-          }
-          // Other large vendor libraries
-          if (id.includes('node_modules')) {
-            return 'vendor-misc';
-          }
+        // Simplified chunking - keep React with dependencies to avoid load order issues
+        manualChunks: {
+          // Bundle all vendor code together to avoid load order issues with React hooks
+          vendor: [
+            'react',
+            'react-dom',
+            'react-router-dom',
+          ],
         },
         // Output all files to assets/ directory (standard Vite structure)
         entryFileNames: 'assets/[name]-[hash].js',
