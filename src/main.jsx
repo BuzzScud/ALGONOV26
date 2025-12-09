@@ -1,14 +1,14 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.jsx'
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import './index.css';
+import App from './App.jsx';
 
 // Get the root element
-const rootElement = document.getElementById('root')
+const rootElement = document.getElementById('root');
 
 // Safety check: ensure root element exists before rendering
 if (!rootElement) {
-  throw new Error('Root element not found. Make sure there is a <div id="root"></div> in your HTML.')
+  throw new Error('Root element not found. Make sure there is a <div id="root"></div> in your HTML.');
 }
 
 // Create root and render the app
@@ -16,7 +16,7 @@ createRoot(rootElement).render(
   <StrictMode>
     <App />
   </StrictMode>
-) 
+); 
 
 // Load Preline UI after React mounts
 if (typeof window !== 'undefined') {
