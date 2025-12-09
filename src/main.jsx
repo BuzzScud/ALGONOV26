@@ -19,16 +19,22 @@ root.render(
 
 // Load Preline UI after React mounts
 if (typeof window !== 'undefined') {
-  // Import Preline dynamically
-  import('preline').then((module) => {
-    // Initialize Preline if it has an init method
-    if (module.default && typeof module.default === 'function') {
-      module.default();
+  // Import Preline dynamically - use preline/preline for proper initialization
+  import('preline/preline').then(() => {
+    // Wait for DOM to be ready before initializing
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      // Initialize Preline components using HSStaticMethods
+      if (window.HSStaticMethods && typeof window.HSStaticMethods.autoInit === 'function') {
+        window.HSStaticMethods.autoInit();
+      }
+    } else {
+      document.addEventListener('DOMContentLoaded', () => {
+        if (window.HSStaticMethods && typeof window.HSStaticMethods.autoInit === 'function') {
+          window.HSStaticMethods.autoInit();
+        }
+      });
     }
-  }).catch((error) => {
-    // Only log in development to avoid console noise in production
-    if (import.meta.env.DEV) {
-      console.warn('Preline UI could not be loaded:', error);
-    }
+  }).catch(() => {
+    // Silently fail - Preline is optional UI enhancement
   });
 }
