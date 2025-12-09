@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: './',                            // relative paths - access site via /dist/
+  base: '/trading/dist/',                 // absolute path for /trading/ subdirectory
   build: {
     outDir: 'dist',
     sourcemap: false,

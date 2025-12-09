@@ -1,46 +1,28 @@
-# Simple Apache configuration for React SPA
+# Apache config for /trading/ subdirectory serving from dist/
 
-# Disable directory listing
 Options -Indexes
+DirectoryIndex dist/index.html
 
-# MIME types
+# MIME types - CRITICAL
 <IfModule mod_mime.c>
   AddType application/javascript .js
   AddType text/css .css
-  AddCharset UTF-8 .js
-  AddCharset UTF-8 .css
 </IfModule>
 
-# Headers for JS/CSS
-<IfModule mod_headers.c>
-  <FilesMatch "\.js$">
-    Header set Content-Type "application/javascript; charset=UTF-8"
-  </FilesMatch>
-  <FilesMatch "\.css$">
-    Header set Content-Type "text/css; charset=UTF-8"
-  </FilesMatch>
-</IfModule>
-
-# Rewrite for SPA - only rewrite non-existent files to index.html
 <IfModule mod_rewrite.c>
   RewriteEngine On
   
-  # Serve dist/index.html for root
-  RewriteRule ^$ dist/index.html [L]
-  
-  # If file exists, serve it directly (no rewrite)
+  # If the file exists, serve it directly (IMPORTANT - must come first)
   RewriteCond %{REQUEST_FILENAME} -f
   RewriteRule ^ - [L]
   
-  # If directory exists, serve it directly
+  # If directory exists, serve it
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
   
-  # For everything else, serve dist/index.html (SPA routing)
+  # Serve root requests from dist/index.html
+  RewriteRule ^$ dist/index.html [L]
+  
+  # Everything else goes to dist/index.html for SPA routing
   RewriteRule ^ dist/index.html [L]
-</IfModule>
-
-# Compression
-<IfModule mod_deflate.c>
-  AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript application/json
 </IfModule>

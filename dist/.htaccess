@@ -1,9 +1,28 @@
-# Simple config - just serve files and fallback to index.html
-DirectoryIndex index.html
+# Apache config for /trading/ subdirectory serving from dist/
+
+Options -Indexes
+DirectoryIndex dist/index.html
+
+# MIME types - CRITICAL
+<IfModule mod_mime.c>
+  AddType application/javascript .js
+  AddType text/css .css
+</IfModule>
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule ^ index.html [L]
+  
+  # If the file exists, serve it directly (IMPORTANT - must come first)
+  RewriteCond %{REQUEST_FILENAME} -f
+  RewriteRule ^ - [L]
+  
+  # If directory exists, serve it
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+  
+  # Serve root requests from dist/index.html
+  RewriteRule ^$ dist/index.html [L]
+  
+  # Everything else goes to dist/index.html for SPA routing
+  RewriteRule ^ dist/index.html [L]
 </IfModule>
