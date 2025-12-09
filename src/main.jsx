@@ -1,3 +1,4 @@
+import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
@@ -12,7 +13,9 @@ if (!rootElement) {
 
 // Create root and render the app
 createRoot(rootElement).render(
-  <App />
+  <StrictMode>
+    <App />
+  </StrictMode>
 ) 
 
 // Load Preline UI after React mounts
