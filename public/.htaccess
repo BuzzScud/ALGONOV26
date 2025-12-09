@@ -1,17 +1,21 @@
-# Apache configuration for React Router SPA deployed to root domain
+# Apache configuration for React Router SPA deployed to subdirectory (e.g., /trading/)
 
 # Enable rewrite engine
 <IfModule mod_rewrite.c>
   RewriteEngine On
+  
+  # For subdirectory deployment, use relative RewriteBase or detect it
+  # This works for both root and subdirectory deployments
   RewriteBase /
   
   # Redirect /src/main.jsx requests to the actual built JS file
   # This fixes the 404 error when source index.html is accidentally served
-  RewriteCond %{REQUEST_URI} ^/src/main\.jsx$
-  RewriteRule ^.*$ /js/index-eqbL6Eir.js [L]
+  # Works for both root and subdirectory deployments
+  RewriteCond %{REQUEST_URI} /src/main\.jsx$
+  RewriteRule ^.*$ js/index-eqbL6Eir.js [L]
   
   # Block direct access to other source files in production (prevent 404 errors)
-  RewriteCond %{REQUEST_URI} ^/src/
+  RewriteCond %{REQUEST_URI} /src/
   RewriteRule ^.*$ - [F,L]
   
   # Don't rewrite files or directories that exist
@@ -19,6 +23,7 @@
   RewriteCond %{REQUEST_FILENAME} !-d
   
   # Rewrite everything else to index.html (for React Router)
+  # This works for both root and subdirectory deployments
   RewriteRule ^ index.html [L]
 </IfModule>
 
@@ -51,4 +56,3 @@
   AddType application/javascript js
   AddType text/css css
 </IfModule>
-

@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -31,13 +31,14 @@ try {
   let publicHtaccess = readFileSync(publicHtaccessPath, 'utf-8');
   
   // Update the redirect rule with the new JS filename
-  const oldPattern = /RewriteRule \^\.\*\$ \/js\/index-[^ ]+\.js \[L\]/;
-  const newRule = `RewriteRule ^.*$ /js/${jsFilename} [L]`;
+  // Pattern matches both absolute (/js/) and relative (js/) paths
+  const oldPattern = /RewriteRule \^\.\*\$ \/?js\/index-[^ ]+\.js \[L\]/;
+  const newRule = `RewriteRule ^.*$ js/${jsFilename} [L]`;
   
   if (oldPattern.test(htaccess)) {
     htaccess = htaccess.replace(oldPattern, newRule);
     writeFileSync(htaccessPath, htaccess, 'utf-8');
-    console.log(`✅ Updated .htaccess with /js/${jsFilename}`);
+    console.log(`✅ Updated .htaccess with js/${jsFilename}`);
   } else {
     console.warn('⚠️  Could not find rewrite rule pattern in .htaccess');
   }
@@ -45,9 +46,24 @@ try {
   if (oldPattern.test(publicHtaccess)) {
     publicHtaccess = publicHtaccess.replace(oldPattern, newRule);
     writeFileSync(publicHtaccessPath, publicHtaccess, 'utf-8');
-    console.log(`✅ Updated public/.htaccess with /js/${jsFilename}`);
+    console.log(`✅ Updated public/.htaccess with js/${jsFilename}`);
   } else {
     console.warn('⚠️  Could not find rewrite rule pattern in public/.htaccess');
+  }
+  
+  // Also update the .htaccess file in dist (copied from public during build)
+  const distHtaccessPath = join(distDir, '.htaccess');
+  if (existsSync(distHtaccessPath)) {
+    try {
+      let distHtaccess = readFileSync(distHtaccessPath, 'utf-8');
+      if (oldPattern.test(distHtaccess)) {
+        distHtaccess = distHtaccess.replace(oldPattern, newRule);
+        writeFileSync(distHtaccessPath, distHtaccess, 'utf-8');
+        console.log(`✅ Updated dist/.htaccess with js/${jsFilename}`);
+      }
+    } catch (err) {
+      // Error reading/updating dist/.htaccess, that's okay
+    }
   }
   
 } catch (error) {
