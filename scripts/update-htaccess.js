@@ -15,8 +15,8 @@ try {
   // Read the built index.html to extract the JS filename
   const indexHtml = readFileSync(distIndexHtml, 'utf-8');
   
-  // Extract the JS filename from the script tag (supports both absolute /js/ and relative ./js/ paths)
-  const jsMatch = indexHtml.match(/src="\.?\/?js\/(index-[^"]+\.js)"/);
+  // Extract the JS filename from the script tag (supports assets/ path)
+  const jsMatch = indexHtml.match(/src="\.?\/?assets\/(index-[^"]+\.js)"/);
   
   if (!jsMatch) {
     console.warn('⚠️  Could not find JS file in dist/index.html');
@@ -24,21 +24,21 @@ try {
   }
   
   const jsFilename = jsMatch[1];
-  console.log(`✅ Found JS file: /js/${jsFilename}`);
+  console.log(`✅ Found JS file: /assets/${jsFilename}`);
   
   // Read the .htaccess file
   let htaccess = readFileSync(htaccessPath, 'utf-8');
   let publicHtaccess = readFileSync(publicHtaccessPath, 'utf-8');
   
   // Update the redirect rule with the new JS filename
-  // Pattern matches both absolute (/js/) and relative (js/) paths
-  const oldPattern = /RewriteRule \^\.\*\$ \/?js\/index-[^ ]+\.js \[L\]/;
-  const newRule = `RewriteRule ^.*$ js/${jsFilename} [L]`;
+  // Pattern matches assets/ path
+  const oldPattern = /RewriteRule \^\.\*\$ assets\/index[^ ]* \[L\]/;
+  const newRule = `RewriteRule ^.*$ assets/${jsFilename} [L]`;
   
   if (oldPattern.test(htaccess)) {
     htaccess = htaccess.replace(oldPattern, newRule);
     writeFileSync(htaccessPath, htaccess, 'utf-8');
-    console.log(`✅ Updated .htaccess with js/${jsFilename}`);
+    console.log(`✅ Updated .htaccess with assets/${jsFilename}`);
   } else {
     console.warn('⚠️  Could not find rewrite rule pattern in .htaccess');
   }
@@ -46,7 +46,7 @@ try {
   if (oldPattern.test(publicHtaccess)) {
     publicHtaccess = publicHtaccess.replace(oldPattern, newRule);
     writeFileSync(publicHtaccessPath, publicHtaccess, 'utf-8');
-    console.log(`✅ Updated public/.htaccess with js/${jsFilename}`);
+    console.log(`✅ Updated public/.htaccess with assets/${jsFilename}`);
   } else {
     console.warn('⚠️  Could not find rewrite rule pattern in public/.htaccess');
   }
@@ -59,7 +59,7 @@ try {
       if (oldPattern.test(distHtaccess)) {
         distHtaccess = distHtaccess.replace(oldPattern, newRule);
         writeFileSync(distHtaccessPath, distHtaccess, 'utf-8');
-        console.log(`✅ Updated dist/.htaccess with js/${jsFilename}`);
+        console.log(`✅ Updated dist/.htaccess with assets/${jsFilename}`);
       }
     } catch (err) {
       // Error reading/updating dist/.htaccess, that's okay
@@ -70,7 +70,3 @@ try {
   console.error('❌ Error updating .htaccess:', error.message);
   process.exit(1);
 }
-
-
-
-

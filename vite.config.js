@@ -39,15 +39,10 @@ export default defineConfig({
             return 'vendor-misc';
           }
         },
-        // Output JS files to js/ directory for server compatibility
-        entryFileNames: 'js/[name]-[hash].js',
-        chunkFileNames: 'js/[name]-[hash].js',
-        assetFileNames: (assetInfo) => {
-          if (assetInfo.name && assetInfo.name.endsWith('.css')) {
-            return 'css/[name]-[hash][extname]';
-          }
-          return 'assets/[name]-[hash][extname]';
-        },
+        // Output all files to assets/ directory (standard Vite structure)
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash][extname]',
       },
     },
   },

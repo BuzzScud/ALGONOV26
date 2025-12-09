@@ -37,15 +37,15 @@ try {
       console.error('   Found reference to main.jsx in the built file.');
       console.error('   This will cause "SyntaxError: Unexpected token \'<\'" in production.');
       console.error('\n   The built index.html should reference compiled JS files like:');
-      console.error('   <script src="./js/index-*.js"></script>');
+      console.error('   <script src="./assets/index-*.js"></script>');
       console.error('\n   NOT:');
       console.error('   <script src="./src/main.jsx"></script>');
       process.exit(1);
     }
   }
 
-  // Check for compiled JS file references (should exist)
-  const compiledJsPattern = /src="\.?\/?js\/index-[^"]+\.js"/;
+  // Check for compiled JS file references (should exist in assets/)
+  const compiledJsPattern = /src="\.?\/?assets\/index-[^"]+\.js"/;
   if (!compiledJsPattern.test(indexHtml)) {
     console.error('❌ ERROR: dist/index.html does not reference compiled JS file!');
     console.error('   The build may be incomplete or incorrect.');
@@ -53,13 +53,13 @@ try {
   }
 
   // Extract and verify JS file exists
-  const jsMatch = indexHtml.match(/src="\.?\/?js\/(index-[^"]+\.js)"/);
+  const jsMatch = indexHtml.match(/src="\.?\/?assets\/(index-[^"]+\.js)"/);
   if (jsMatch) {
     const jsFilename = jsMatch[1];
-    const jsPath = join(distDir, 'js', jsFilename);
+    const jsPath = join(distDir, 'assets', jsFilename);
     
     if (!existsSync(jsPath)) {
-      console.error(`❌ ERROR: Referenced JS file does not exist: js/${jsFilename}`);
+      console.error(`❌ ERROR: Referenced JS file does not exist: assets/${jsFilename}`);
       console.error('   The build may be incomplete.');
       process.exit(1);
     }
@@ -73,20 +73,20 @@ try {
       process.exit(1);
     }
     
-    console.log(`✅ Verified compiled JS file: js/${jsFilename}`);
+    console.log(`✅ Verified compiled JS file: assets/${jsFilename}`);
   }
 
   // Check for CSS file
-  const cssPattern = /href="\.?\/?css\/index-[^"]+\.css"/;
+  const cssPattern = /href="\.?\/?assets\/index-[^"]+\.css"/;
   if (!cssPattern.test(indexHtml)) {
     console.warn('⚠️  WARNING: No compiled CSS file reference found.');
   } else {
-    const cssMatch = indexHtml.match(/href="\.?\/?css\/(index-[^"]+\.css)"/);
+    const cssMatch = indexHtml.match(/href="\.?\/?assets\/(index-[^"]+\.css)"/);
     if (cssMatch) {
       const cssFilename = cssMatch[1];
-      const cssPath = join(distDir, 'css', cssFilename);
+      const cssPath = join(distDir, 'assets', cssFilename);
       if (existsSync(cssPath)) {
-        console.log(`✅ Verified compiled CSS file: css/${cssFilename}`);
+        console.log(`✅ Verified compiled CSS file: assets/${cssFilename}`);
       }
     }
   }
@@ -99,4 +99,3 @@ try {
   console.error('❌ Error during build verification:', error.message);
   process.exit(1);
 }
-
