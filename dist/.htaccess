@@ -1,35 +1,9 @@
-# Allow all files in dist to be served directly
+# Simple config - just serve files and fallback to index.html
+DirectoryIndex index.html
 
-# MIME types
-<IfModule mod_mime.c>
-  AddType application/javascript .js
-  AddType text/css .css
-  AddCharset UTF-8 .js
-  AddCharset UTF-8 .css
-</IfModule>
-
-# Headers
-<IfModule mod_headers.c>
-  <FilesMatch "\.js$">
-    Header set Content-Type "application/javascript; charset=UTF-8"
-  </FilesMatch>
-  <FilesMatch "\.css$">
-    Header set Content-Type "text/css; charset=UTF-8"
-  </FilesMatch>
-</IfModule>
-
-# SPA fallback - only for non-existent paths
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  
-  # If file exists, serve it
-  RewriteCond %{REQUEST_FILENAME} -f
-  RewriteRule ^ - [L]
-  
-  # If directory exists, serve it
-  RewriteCond %{REQUEST_FILENAME} -d
-  RewriteRule ^ - [L]
-  
-  # Fallback to index.html for SPA routes
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule ^ index.html [L]
 </IfModule>

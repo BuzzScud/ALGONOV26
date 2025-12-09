@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/dist/',                       // absolute path - site root is project folder
+  base: './',                            // relative paths - access site via /dist/
   build: {
     outDir: 'dist',
     sourcemap: false,
