@@ -33,20 +33,24 @@ Options -Indexes
   RewriteEngine On
   RewriteBase /trading/
   
+  # IMPORTANT: Rewrite /trading/assets/* to /trading/dist/assets/*
+  RewriteRule ^assets/(.*)$ dist/assets/$1 [L]
+  
+  # Rewrite vite.svg to dist/vite.svg
+  RewriteRule ^vite\.svg$ dist/vite.svg [L]
+  
   # If request is for root, serve dist/index.html
   RewriteRule ^$ dist/index.html [L]
-  
-  # If file exists in dist/, serve it
-  RewriteCond %{REQUEST_URI} !^/trading/dist/
-  RewriteCond %{DOCUMENT_ROOT}/trading/dist%{REQUEST_URI} -f
-  RewriteRule ^(.*)$ dist/$1 [L]
-  
-  # For assets folder, redirect to dist/assets
-  RewriteRule ^assets/(.*)$ dist/assets/$1 [L]
   
   # Block access to source files
   RewriteCond %{REQUEST_URI} ^/trading/src/
   RewriteRule ^.*$ - [F,L]
+  
+  # If file exists in dist/, serve it
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{DOCUMENT_ROOT}/trading/dist%{REQUEST_URI} -f
+  RewriteRule ^(.*)$ dist/$1 [L]
   
   # For all other requests, serve dist/index.html (SPA routing)
   RewriteCond %{REQUEST_FILENAME} !-f
