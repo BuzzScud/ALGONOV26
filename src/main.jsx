@@ -13,7 +13,7 @@ if (!rootElement) {
 // Create root and render the app
 createRoot(rootElement).render(
   <App />
-)
+) 
 
 // Load Preline UI after React mounts
 if (typeof window !== 'undefined') {
