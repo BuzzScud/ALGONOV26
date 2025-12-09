@@ -11,17 +11,21 @@ if (!rootElement) {
   throw new Error('Root element not found. Make sure there is a <div id="root"></div> in your HTML.');
 }
 
-// Create root instance and render the app
+// Create root instance and render the app with StrictMode (React 18+ best practice)
 // Store the root instance for React 19 compatibility
 try {
   const root = createRoot(rootElement);
-  root.render(<App />);
+  root.render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
 } catch (error) {
-  // Log error in development, but fail silently in production to avoid exposing internals
+  // Log error in development for debugging
   if (import.meta.env.DEV) {
     console.error('Error rendering React app:', error);
   }
-  // Re-throw to ensure error boundary can catch it
+  // Re-throw to ensure ErrorBoundary can catch and handle it gracefully
   throw error;
 } 
 
