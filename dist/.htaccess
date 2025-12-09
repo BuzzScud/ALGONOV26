@@ -1,74 +1,75 @@
-# Apache configuration for React SPA - Serves from dist/ subdirectory
-# Web root is project root, built files are in dist/
+# Apache configuration for React Router SPA deployed to subdirectory (e.g., /trading/)
 
-# Set default document
-DirectoryIndex dist/index.html index.html
-
-# Disable directory listing
-Options -Indexes
-
-# MIME types
+# MIME types - CRITICAL: Must be set FIRST to prevent HTML entity encoding
 <IfModule mod_mime.c>
   AddType application/javascript .js
   AddType text/css .css
+  # Explicitly set charset to prevent encoding issues
   AddCharset UTF-8 .js
   AddCharset UTF-8 .css
 </IfModule>
 
-# Headers
+# Force correct Content-Type for JavaScript files to prevent HTML entity encoding
+# This MUST come before compression to ensure proper MIME type handling
 <IfModule mod_headers.c>
+  # Set Content-Type header for JS files BEFORE any processing
   <FilesMatch "\.js$">
     Header set Content-Type "application/javascript; charset=UTF-8"
   </FilesMatch>
+  # Set Content-Type header for CSS files
   <FilesMatch "\.css$">
     Header set Content-Type "text/css; charset=UTF-8"
   </FilesMatch>
+  # Security headers
   Header set X-Content-Type-Options "nosniff"
   Header set X-Frame-Options "SAMEORIGIN"
   Header set X-XSS-Protection "1; mode=block"
 </IfModule>
 
-# Rewrite rules - serve everything from dist/
+# Enable rewrite engine
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  RewriteBase /trading/
   
-  # IMPORTANT: Rewrite /trading/assets/* to /trading/dist/assets/*
-  RewriteRule ^assets/(.*)$ dist/assets/$1 [L]
+  # For subdirectory deployment, use relative RewriteBase or detect it
+  # This works for both root and subdirectory deployments
+  RewriteBase /
   
-  # Rewrite vite.svg to dist/vite.svg
-  RewriteRule ^vite\.svg$ dist/vite.svg [L]
+  # Redirect /src/main.jsx requests to the actual built JS file
+  # This fixes the 404 error when source index.html is accidentally served
+  # Works for both root and subdirectory deployments
+  # Handle both absolute (/src/main.jsx) and relative (src/main.jsx) paths
+  RewriteCond %{REQUEST_URI} /src/main\.jsx$ [OR]
+  RewriteCond %{REQUEST_URI} ^src/main\.jsx$
+  RewriteRule ^.*$ assets/index-w6t913WG.js [L]
   
-  # If request is for root, serve dist/index.html
-  RewriteRule ^$ dist/index.html [L]
-  
-  # Block access to source files
-  RewriteCond %{REQUEST_URI} ^/trading/src/
+  # Block direct access to other source files in production (prevent 404 errors)
+  RewriteCond %{REQUEST_URI} /src/
   RewriteRule ^.*$ - [F,L]
   
-  # If file exists in dist/, serve it
+  # Don't rewrite files or directories that exist
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteCond %{DOCUMENT_ROOT}/trading/dist%{REQUEST_URI} -f
-  RewriteRule ^(.*)$ dist/$1 [L]
   
-  # For all other requests, serve dist/index.html (SPA routing)
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule ^ dist/index.html [L]
+  # Rewrite everything else to index.html (for React Router)
+  # This works for both root and subdirectory deployments
+  RewriteRule ^ index.html [L]
 </IfModule>
 
-# Compression
+# Enable compression - EXCLUDE text/xml to prevent JS files from being treated as XML
 <IfModule mod_deflate.c>
+  # Compress JS files as application/javascript, NOT as text/xml
+  # Removed text/xml from compression types to prevent HTML entity encoding
   AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript application/json
 </IfModule>
 
-# Caching
+# Set cache headers
 <IfModule mod_expires.c>
   ExpiresActive On
   ExpiresByType text/css "access plus 1 year"
   ExpiresByType application/javascript "access plus 1 year"
   ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/jpg "access plus 1 year"
   ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/gif "access plus 1 year"
   ExpiresByType image/svg+xml "access plus 1 year"
 </IfModule>

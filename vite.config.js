@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/trading/dist/',              // absolute path for subdirectory deployment
+  base: '/dist/',                       // absolute path - DocumentRoot is /trading/
   build: {
     outDir: 'dist',
     sourcemap: false,                 // disable in production – stops exposing /src/*.jsx paths
