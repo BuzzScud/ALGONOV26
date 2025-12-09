@@ -8,7 +8,7 @@
   # Redirect /src/main.jsx requests to the actual built JS file
   # This fixes the 404 error when source index.html is accidentally served
   RewriteCond %{REQUEST_URI} ^/src/main\.jsx$
-  RewriteRule ^.*$ js/index-eqbL6Eir.js [L]
+  RewriteRule ^.*$ js/index-B2jvpjmP.js [L]
   
   # Block direct access to other source files in production (prevent 404 errors)
   RewriteCond %{REQUEST_URI} ^/src/
