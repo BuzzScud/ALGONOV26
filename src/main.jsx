@@ -11,8 +11,19 @@ if (!rootElement) {
   throw new Error('Root element not found. Make sure there is a <div id="root"></div> in your HTML.');
 }
 
-// Create root and render the app using React.createElement to avoid JSX parsing issues
-createRoot(rootElement).render(React.createElement(App)); 
+// Create root instance and render the app
+// Store the root instance for React 19 compatibility
+try {
+  const root = createRoot(rootElement);
+  root.render(<App />);
+} catch (error) {
+  // Log error in development, but fail silently in production to avoid exposing internals
+  if (import.meta.env.DEV) {
+    console.error('Error rendering React app:', error);
+  }
+  // Re-throw to ensure error boundary can catch it
+  throw error;
+} 
 
 // Load Preline UI after React mounts
 if (typeof window !== 'undefined') {

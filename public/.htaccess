@@ -14,7 +14,7 @@
   # Handle both absolute (/src/main.jsx) and relative (src/main.jsx) paths
   RewriteCond %{REQUEST_URI} /src/main\.jsx$ [OR]
   RewriteCond %{REQUEST_URI} ^src/main\.jsx$
-  RewriteRule ^.*$ js/index-Booewkfy.js [L]
+  RewriteRule ^.*$ js/index-ORQRPgfA.js [L]
   
   # Block direct access to other source files in production (prevent 404 errors)
   RewriteCond %{REQUEST_URI} /src/
