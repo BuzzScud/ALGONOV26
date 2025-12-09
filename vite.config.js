@@ -7,9 +7,38 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,                 // disable in production – stops exposing /src/*.jsx paths
+    chunkSizeWarningLimit: 600,       // Increase limit slightly since we're splitting properly
     rollupOptions: {
       output: {
-        manualChunks: undefined,
+        // Manual code splitting for better performance
+        manualChunks: (id) => {
+          // React and React DOM vendor chunk
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+            return 'vendor-react';
+          }
+          // Chart.js vendor chunk (large library)
+          if (id.includes('node_modules/chart.js') || 
+              id.includes('node_modules/react-chartjs-2') ||
+              id.includes('node_modules/chartjs-')) {
+            return 'vendor-charts';
+          }
+          // PDF.js vendor chunk (very large library)
+          if (id.includes('node_modules/pdfjs-dist') || id.includes('node_modules/react-pdf')) {
+            return 'vendor-pdf';
+          }
+          // Lightweight charts vendor chunk
+          if (id.includes('node_modules/lightweight-charts')) {
+            return 'vendor-lwc';
+          }
+          // ApexCharts vendor chunk
+          if (id.includes('node_modules/apexcharts')) {
+            return 'vendor-apex';
+          }
+          // Other large vendor libraries
+          if (id.includes('node_modules')) {
+            return 'vendor-misc';
+          }
+        },
         // Output JS files to js/ directory for server compatibility
         entryFileNames: 'js/[name]-[hash].js',
         chunkFileNames: 'js/[name]-[hash].js',
