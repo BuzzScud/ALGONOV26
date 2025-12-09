@@ -15,8 +15,8 @@ try {
   // Read the built index.html to extract the JS filename
   const indexHtml = readFileSync(distIndexHtml, 'utf-8');
   
-  // Extract the JS filename from the script tag
-  const jsMatch = indexHtml.match(/src="\/js\/(index-[^"]+\.js)"/);
+  // Extract the JS filename from the script tag (supports both absolute /js/ and relative ./js/ paths)
+  const jsMatch = indexHtml.match(/src="\.?\/?js\/(index-[^"]+\.js)"/);
   
   if (!jsMatch) {
     console.warn('⚠️  Could not find JS file in dist/index.html');
