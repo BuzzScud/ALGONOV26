@@ -1,5 +1,31 @@
 # Apache configuration for React Router SPA deployed to subdirectory (e.g., /trading/)
 
+# MIME types - CRITICAL: Must be set FIRST to prevent HTML entity encoding
+<IfModule mod_mime.c>
+  AddType application/javascript .js
+  AddType text/css .css
+  # Explicitly set charset to prevent encoding issues
+  AddCharset UTF-8 .js
+  AddCharset UTF-8 .css
+</IfModule>
+
+# Force correct Content-Type for JavaScript files to prevent HTML entity encoding
+# This MUST come before compression to ensure proper MIME type handling
+<IfModule mod_headers.c>
+  # Set Content-Type header for JS files BEFORE any processing
+  <FilesMatch "\.js$">
+    Header set Content-Type "application/javascript; charset=UTF-8"
+  </FilesMatch>
+  # Set Content-Type header for CSS files
+  <FilesMatch "\.css$">
+    Header set Content-Type "text/css; charset=UTF-8"
+  </FilesMatch>
+  # Security headers
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set X-XSS-Protection "1; mode=block"
+</IfModule>
+
 # Enable rewrite engine
 <IfModule mod_rewrite.c>
   RewriteEngine On
@@ -29,9 +55,11 @@
   RewriteRule ^ index.html [L]
 </IfModule>
 
-# Enable compression
+# Enable compression - EXCLUDE text/xml to prevent JS files from being treated as XML
 <IfModule mod_deflate.c>
-  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+  # Compress JS files as application/javascript, NOT as text/xml
+  # Removed text/xml from compression types to prevent HTML entity encoding
+  AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript application/json
 </IfModule>
 
 # Set cache headers
@@ -44,17 +72,4 @@
   ExpiresByType image/jpeg "access plus 1 year"
   ExpiresByType image/gif "access plus 1 year"
   ExpiresByType image/svg+xml "access plus 1 year"
-</IfModule>
-
-# Security headers
-<IfModule mod_headers.c>
-  Header set X-Content-Type-Options "nosniff"
-  Header set X-Frame-Options "SAMEORIGIN"
-  Header set X-XSS-Protection "1; mode=block"
-</IfModule>
-
-# MIME types
-<IfModule mod_mime.c>
-  AddType application/javascript js
-  AddType text/css css
 </IfModule>
