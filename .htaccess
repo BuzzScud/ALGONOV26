@@ -1,8 +1,4 @@
-# Apache configuration for React SPA - Serves from dist/ subdirectory
-# Web root is project root, built files are in dist/
-
-# Set default document
-DirectoryIndex dist/index.html index.html
+# Simple Apache configuration for React SPA
 
 # Disable directory listing
 Options -Indexes
@@ -15,7 +11,7 @@ Options -Indexes
   AddCharset UTF-8 .css
 </IfModule>
 
-# Headers
+# Headers for JS/CSS
 <IfModule mod_headers.c>
   <FilesMatch "\.js$">
     Header set Content-Type "application/javascript; charset=UTF-8"
@@ -23,52 +19,28 @@ Options -Indexes
   <FilesMatch "\.css$">
     Header set Content-Type "text/css; charset=UTF-8"
   </FilesMatch>
-  Header set X-Content-Type-Options "nosniff"
-  Header set X-Frame-Options "SAMEORIGIN"
-  Header set X-XSS-Protection "1; mode=block"
 </IfModule>
 
-# Rewrite rules - serve everything from dist/
+# Rewrite for SPA - only rewrite non-existent files to index.html
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  RewriteBase /trading/
   
-  # IMPORTANT: Rewrite /trading/assets/* to /trading/dist/assets/*
-  RewriteRule ^assets/(.*)$ dist/assets/$1 [L]
-  
-  # Rewrite vite.svg to dist/vite.svg
-  RewriteRule ^vite\.svg$ dist/vite.svg [L]
-  
-  # If request is for root, serve dist/index.html
+  # Serve dist/index.html for root
   RewriteRule ^$ dist/index.html [L]
   
-  # Block access to source files
-  RewriteCond %{REQUEST_URI} ^/trading/src/
-  RewriteRule ^.*$ - [F,L]
+  # If file exists, serve it directly (no rewrite)
+  RewriteCond %{REQUEST_FILENAME} -f
+  RewriteRule ^ - [L]
   
-  # If file exists in dist/, serve it
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteCond %{DOCUMENT_ROOT}/trading/dist%{REQUEST_URI} -f
-  RewriteRule ^(.*)$ dist/$1 [L]
+  # If directory exists, serve it directly
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
   
-  # For all other requests, serve dist/index.html (SPA routing)
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
+  # For everything else, serve dist/index.html (SPA routing)
   RewriteRule ^ dist/index.html [L]
 </IfModule>
 
 # Compression
 <IfModule mod_deflate.c>
   AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript application/json
-</IfModule>
-
-# Caching
-<IfModule mod_expires.c>
-  ExpiresActive On
-  ExpiresByType text/css "access plus 1 year"
-  ExpiresByType application/javascript "access plus 1 year"
-  ExpiresByType image/png "access plus 1 year"
-  ExpiresByType image/jpeg "access plus 1 year"
-  ExpiresByType image/svg+xml "access plus 1 year"
 </IfModule>
