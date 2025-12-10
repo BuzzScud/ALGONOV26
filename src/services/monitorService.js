@@ -393,9 +393,21 @@ const getPreferredApi = () => {
 };
 
 // Unified fetch function with user-selected API or automatic fallback
-export const fetchMarketData = async (symbol, interval = '1d', range = '1d') => {
+// prioritizeYahoo: if true, tries Yahoo Finance first (useful for historical chart data)
+export const fetchMarketData = async (symbol, interval = '1d', range = '1d', prioritizeYahoo = false) => {
   const preferredApi = getPreferredApi();
   const errors = [];
+  
+  // If prioritizeYahoo is true (needed for chart data), try Yahoo Finance first
+  if (prioritizeYahoo) {
+    try {
+      const result = await fetchYahooFinance(symbol, interval, range);
+      return result;
+    } catch (error) {
+      errors.push(`Yahoo: ${error.message}`);
+      // Continue to fallback options
+    }
+  }
   
   // In development, Yahoo Finance works via Vite proxy
   if (import.meta.env.DEV) {
@@ -429,8 +441,9 @@ export const fetchMarketData = async (symbol, interval = '1d', range = '1d') => 
   
   // Auto mode or fallback: Try all APIs
   // For production, Finnhub is more reliable since it doesn't need CORS proxy
-  if (!import.meta.env.DEV) {
-    // Try Finnhub first in production (no CORS issues)
+  // But only if we don't need historical data (prioritizeYahoo = false)
+  if (!import.meta.env.DEV && !prioritizeYahoo) {
+    // Try Finnhub first in production (no CORS issues) for basic quotes
     try {
       const result = await fetchFinnhub(symbol);
       return result;

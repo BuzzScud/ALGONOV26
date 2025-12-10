@@ -59,12 +59,13 @@ function FIB() {
       const range = period === 'ytd' ? 'ytd' : '1y';
       const interval = '1d'; // Daily data for YTD
       
-      // Use the monitorService fetchMarketData which properly handles the API
-      const result = await fetchMarketData(symbolValue, interval, range);
+      // For FIB calculations, we need historical chart data, so prioritize Yahoo Finance
+      // Use fetchMarketData with prioritizeYahoo=true to ensure we get chart data
+      const result = await fetchMarketData(symbolValue, interval, range, true);
       
-      // Check if we got Yahoo Finance data (required for historical chart data)
+      // Verify we got Yahoo Finance data (required for historical chart data)
       if (result.source !== 'yahoo') {
-        throw new Error('Yahoo Finance data is required for chart display. Please try again.');
+        throw new Error('Historical chart data is required for Fibonacci calculations. Yahoo Finance API is currently unavailable. Please try again later or check your internet connection.');
       }
       
       const data = result.data;
