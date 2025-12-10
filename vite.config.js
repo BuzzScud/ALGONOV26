@@ -8,11 +8,20 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     chunkSizeWarningLimit: 1500,
-    modulePreload: false,               // Disable modulepreload to avoid browser warnings
+    modulePreload: false,
     rollupOptions: {
       output: {
-        // Keep everything in one bundle to avoid load order issues
-        manualChunks: undefined,
+        // Bundle all vendor code together to avoid React hooks loading issues
+        manualChunks: (id) => {
+          if (id.includes('node_modules')) {
+            // Keep preline separate (it's loaded dynamically)
+            if (id.includes('preline')) {
+              return 'preline';
+            }
+            // Bundle all other dependencies together
+            return 'vendor';
+          }
+        },
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash][extname]',
