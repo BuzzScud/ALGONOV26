@@ -158,29 +158,23 @@ function Sidebar({ isOpen, onClose }) {
             </div>
           </div>
 
-          {/* Scrollable Navigation Area */}
+          {/* Scrollable Navigation Area - Only navigation items scroll */}
           <div className="flex-1 overflow-y-auto overscroll-contain">
             <nav
-              className="hs-accordion-group p-6 w-full flex flex-col"
+              className="hs-accordion-group p-6 w-full"
               data-hs-accordion-always-open
             >
               <ul className="space-y-1.5">
                 {navItems.map((item) => {
-                  // Check if current path matches nav item path
-                  // Special handling for nested routes - check exact matches first
                   let isActive = false;
                   
                   if (item.path === '/') {
-                    // For root path, only match exactly
                     isActive = location.pathname === '/';
                   } else if (item.path === '/projection') {
-                    // For /projection, only match if it's exactly /projection (not /projection/fib)
                     isActive = location.pathname === '/projection';
                   } else if (item.path === '/projection/fib') {
-                    // For /projection/fib, match exactly
                     isActive = location.pathname === '/projection/fib';
                   } else {
-                    // For other paths, match exact or if pathname starts with path + '/'
                     isActive = location.pathname === item.path || 
                       location.pathname.startsWith(item.path + '/');
                   }
@@ -190,7 +184,6 @@ function Sidebar({ isOpen, onClose }) {
                       <NavLink
                         to={item.path}
                         onClick={() => {
-                          // Close sidebar on mobile when link is clicked
                           if (window.innerWidth < 1024 && onClose) {
                             onClose();
                           }
@@ -208,95 +201,97 @@ function Sidebar({ isOpen, onClose }) {
             </nav>
           </div>
 
-          {/* Fixed Bottom Section - Clocks, Theme Toggle, User Profile */}
-          <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 p-6 space-y-4 bg-white dark:bg-gray-900">
-            {/* Sidebar Clocks with Numerology */}
-            <div className="space-y-3 max-h-[200px] overflow-y-auto">
-              {clocks.map((clock) => (
-                <SidebarClock
-                  key={clock.id}
-                  timezone={clock.timezone}
-                  city={clock.city}
-                  country={clock.country}
-                  onRemove={clocks.length > 1 ? () => removeClock(clock.id) : null}
-                />
-              ))}
-            </div>
-
-            {/* Add Clock Button */}
-            {!showAddClock ? (
-              <button
-                type="button"
-                onClick={() => setShowAddClock(true)}
-                className="w-full px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 border border-blue-200 dark:border-blue-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors flex items-center justify-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Add Clock
-              </button>
-            ) : (
-              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Select Timezone
-                  </label>
-                  <select
-                    value={selectedTimezone}
-                    onChange={(e) => setSelectedTimezone(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    {COMMON_TIMEZONES.map((tz) => (
-                      <option key={tz.timezone} value={tz.timezone}>
-                        {tz.city}, {tz.country}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={addClock}
-                    className="flex-1 px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-                  >
-                    Add
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddClock(false);
-                      setSelectedTimezone(COMMON_TIMEZONES[0].timezone);
-                    }}
-                    className="flex-1 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
+          {/* Fixed Bottom Section - World Clock, Light Mode Toggle, User Profile */}
+          <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+            <div className="p-4 space-y-3 max-h-[45vh] overflow-y-auto">
+              {/* Sidebar Clocks with Numerology */}
+              <div className="space-y-3">
+                {clocks.map((clock) => (
+                  <SidebarClock
+                    key={clock.id}
+                    timezone={clock.timezone}
+                    city={clock.city}
+                    country={clock.country}
+                    onRemove={clocks.length > 1 ? () => removeClock(clock.id) : null}
+                  />
+                ))}
               </div>
-            )}
-            
-            {/* Light Mode Toggle */}
-            <div className="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {darkMode ? 'Dark Mode' : 'Light Mode'}
-              </span>
-              <button
-                type="button"
-                onClick={toggleDarkMode}
-                className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 dark:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                role="switch"
-                aria-checked={darkMode}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    darkMode ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
-            </div>
 
-            {/* User Profile */}
-            <UserProfile />
+              {/* Add Clock Button */}
+              {!showAddClock ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAddClock(true)}
+                  className="w-full px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 border border-blue-200 dark:border-blue-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add Clock
+                </button>
+              ) : (
+                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Select Timezone
+                    </label>
+                    <select
+                      value={selectedTimezone}
+                      onChange={(e) => setSelectedTimezone(e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      {COMMON_TIMEZONES.map((tz) => (
+                        <option key={tz.timezone} value={tz.timezone}>
+                          {tz.city}, {tz.country}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={addClock}
+                      className="flex-1 px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                    >
+                      Add
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddClock(false);
+                        setSelectedTimezone(COMMON_TIMEZONES[0].timezone);
+                      }}
+                      className="flex-1 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {/* Light/Dark Mode Toggle */}
+              <div className="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {darkMode ? 'Dark Mode' : 'Light Mode'}
+                </span>
+                <button
+                  type="button"
+                  onClick={toggleDarkMode}
+                  className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 dark:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  role="switch"
+                  aria-checked={darkMode}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      darkMode ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* User Profile */}
+              <UserProfile />
+            </div>
           </div>
         </div>
       </div>
