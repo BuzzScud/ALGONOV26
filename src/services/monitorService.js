@@ -1,17 +1,44 @@
 // Yahoo Finance API Service for Live Market Data
 // Fetches real-time stock and market data from Yahoo Finance
 
-// Use proxy in development, direct API in production (with CORS proxy fallback)
-const getYahooFinanceUrl = (symbol, interval = '1d', range = '1d') => {
+// List of reliable CORS proxy services for production
+const CORS_PROXIES = [
+  {
+    name: 'corsproxy.io',
+    getUrl: (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    parseResponse: (data) => data, // Returns raw JSON
+  },
+  {
+    name: 'allorigins',
+    getUrl: (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    parseResponse: (data) => data, // Returns raw JSON with /raw endpoint
+  },
+  {
+    name: 'cors.sh',
+    getUrl: (url) => `https://proxy.cors.sh/${url}`,
+    parseResponse: (data) => data, // Returns raw JSON
+  },
+];
+
+// Track which proxy is working best
+let preferredProxyIndex = 0;
+
+// Get Yahoo Finance URL based on environment
+const getYahooFinanceBaseUrl = (symbol, interval = '1d', range = '1d') => {
+  return `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`;
+};
+
+// Use proxy in development, CORS proxy in production
+const getYahooFinanceUrl = (symbol, interval = '1d', range = '1d', proxyIndex = 0) => {
   // In development, use Vite proxy
   if (import.meta.env.DEV) {
     return `/api/yahoo/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`;
   }
   
-  // In production, use CORS proxy as fallback
-  // Using a public CORS proxy service
-  const baseUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`;
-  return `https://api.allorigins.win/get?url=${encodeURIComponent(baseUrl)}`;
+  // In production, use CORS proxy
+  const baseUrl = getYahooFinanceBaseUrl(symbol, interval, range);
+  const proxy = CORS_PROXIES[proxyIndex % CORS_PROXIES.length];
+  return proxy.getUrl(baseUrl);
 };
 
 // Default Finnhub API key for production
@@ -56,56 +83,136 @@ const getMassiveUrl = (symbol) => {
   return `https://api.massive.com/v1/quote?symbol=${symbol}&apiKey=${apiKey}`;
 };
 
-// Helper function to fetch from Yahoo Finance
-export const fetchYahooFinance = async (symbol, interval = '1d', range = '1d') => {
+// Helper function to fetch from Yahoo Finance with proxy fallback
+const fetchWithProxy = async (symbol, interval, range, proxyIndex) => {
+  const url = getYahooFinanceUrl(symbol, interval, range, proxyIndex);
+  const proxy = CORS_PROXIES[proxyIndex % CORS_PROXIES.length];
+  
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout per proxy
+  
   try {
-    const url = getYahooFinanceUrl(symbol, interval, range);
-    
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
+        'Content-Type': 'application/json',
       },
+      signal: controller.signal,
     });
     
+    clearTimeout(timeoutId);
+    
     if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error');
-      throw new Error(`Failed to fetch data for ${symbol}: ${response.status} ${response.statusText}. ${errorText}`);
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
     
-    let data = await response.json();
+    const contentType = response.headers.get('content-type') || '';
+    let data;
     
-    // Handle CORS proxy response format
-    if (data.contents) {
+    if (contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      // Try to parse as JSON anyway
+      const text = await response.text();
       try {
-        data = typeof data.contents === 'string' ? JSON.parse(data.contents) : data.contents;
-      } catch (parseError) {
-        console.error('Error parsing CORS proxy response:', parseError);
-        throw new Error('Failed to parse API response');
+        data = JSON.parse(text);
+      } catch (e) {
+        throw new Error('Response is not JSON');
       }
     }
     
-    if (!data) {
-      throw new Error('Empty response from API');
+    // Handle wrapped response from some proxies
+    if (data.contents) {
+      data = typeof data.contents === 'string' ? JSON.parse(data.contents) : data.contents;
     }
     
-    if (!data.chart) {
-      throw new Error('Invalid response: missing chart data');
-    }
+    // Apply any proxy-specific parsing
+    data = proxy.parseResponse(data);
     
-    if (!data.chart.result || !Array.isArray(data.chart.result) || data.chart.result.length === 0) {
-      throw new Error('Invalid response: no result data');
-    }
-    
-    if (!data.chart.result[0]) {
-      throw new Error('Invalid response: empty result array');
-    }
-    
-    return { data, source: 'yahoo' };
+    return data;
   } catch (error) {
-    console.error(`Error fetching from Yahoo Finance ${symbol}:`, error);
+    clearTimeout(timeoutId);
     throw error;
   }
+};
+
+// Helper function to fetch from Yahoo Finance
+export const fetchYahooFinance = async (symbol, interval = '1d', range = '1d') => {
+  // In development, use direct Vite proxy
+  if (import.meta.env.DEV) {
+    try {
+      const url = getYahooFinanceUrl(symbol, interval, range);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data?.chart?.result?.[0]) {
+        throw new Error('Invalid response format');
+      }
+      
+      return { data, source: 'yahoo' };
+    } catch (error) {
+      console.error(`Error fetching from Yahoo Finance (dev) ${symbol}:`, error);
+      throw error;
+    }
+  }
+  
+  // In production, try multiple CORS proxies with fallback
+  let lastError = null;
+  
+  // Try starting from the preferred proxy, then cycle through others
+  for (let attempt = 0; attempt < CORS_PROXIES.length; attempt++) {
+    const proxyIndex = (preferredProxyIndex + attempt) % CORS_PROXIES.length;
+    const proxy = CORS_PROXIES[proxyIndex];
+    
+    try {
+      const data = await fetchWithProxy(symbol, interval, range, proxyIndex);
+      
+      // Validate response
+      if (!data) {
+        throw new Error('Empty response from API');
+      }
+      
+      if (!data.chart) {
+        throw new Error('Invalid response: missing chart data');
+      }
+      
+      if (!data.chart.result || !Array.isArray(data.chart.result) || data.chart.result.length === 0) {
+        throw new Error('Invalid response: no result data');
+      }
+      
+      if (!data.chart.result[0]) {
+        throw new Error('Invalid response: empty result array');
+      }
+      
+      // This proxy worked, remember it for next time
+      if (proxyIndex !== preferredProxyIndex) {
+        preferredProxyIndex = proxyIndex;
+        console.log(`Switched to proxy: ${proxy.name}`);
+      }
+      
+      return { data, source: 'yahoo' };
+    } catch (error) {
+      lastError = error;
+      console.warn(`Proxy ${proxy.name} failed for ${symbol}:`, error.message);
+      // Continue to next proxy
+    }
+  }
+  
+  // All proxies failed
+  console.error(`All CORS proxies failed for ${symbol}:`, lastError);
+  throw new Error(`Failed to fetch data for ${symbol}: All proxy services unavailable`);
 };
 
 // Helper function to fetch from Finnhub (Backup API)
