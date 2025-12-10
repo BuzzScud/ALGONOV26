@@ -10,6 +10,7 @@ import API from './pages/API';
 import Settings from './pages/Settings';
 import FIB from './pages/FIB';
 import Notes from './pages/Notes';
+import EconomicCalendar from './pages/EconomicCalendar';
 
 function App() {
   // Detect base path from current location for subdirectory deployment
@@ -32,7 +33,7 @@ function App() {
     }
     
     // Auto-detect subdirectory: if path has multiple segments and first isn't a known route
-    const knownRoutes = ['news', 'trading', 'notes', 'projection', 'data', 'api', 'settings'];
+    const knownRoutes = ['news', 'trading', 'notes', 'projection', 'data', 'api', 'settings', 'calendar'];
     
     // If first part is not a known route, it's likely a subdirectory
     if (pathParts.length > 0 && !knownRoutes.includes(pathParts[0]) && pathParts[0] !== 'index.html') {
@@ -65,6 +66,7 @@ function App() {
             <Route path="projection" element={<Projection />} />
             <Route path="data" element={<Data />} />
             <Route path="api" element={<API />} />
+            <Route path="calendar" element={<EconomicCalendar />} />
             <Route path="settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

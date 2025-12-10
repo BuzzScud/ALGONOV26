@@ -95,6 +95,7 @@ function Sidebar({ isOpen, onClose }) {
 
   const navItems = [
     { path: '/', label: 'Dashboard' },
+    { path: '/calendar', label: 'Economic Calendar' },
     { path: '/news', label: 'News' },
     { path: '/trading', label: 'Charts' },
     { path: '/trading/fib', label: 'Fib' },
