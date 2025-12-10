@@ -22,7 +22,7 @@ const COMMON_TIMEZONES = [
   { timezone: 'America/Mexico_City', city: 'Mexico City', country: 'Mexico' },
 ];
 
-function Sidebar() {
+function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
   
   const [darkMode, setDarkMode] = useState(() => {
@@ -107,9 +107,20 @@ function Sidebar() {
 
   return (
     <>
+      {/* Mobile backdrop */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-[59] bg-gray-900 bg-opacity-50 lg:hidden"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+      
       <div
         id="application-sidebar"
-        className="hs-overlay hs-overlay-open:translate-x-0 -translate-x-full transition-all duration-300 transform hidden fixed top-0 start-0 bottom-0 z-[60] w-64 bg-white dark:bg-gray-900 border-e border-gray-200 dark:border-gray-700 pt-7 pb-10 overflow-y-auto lg:translate-x-0 lg:static lg:end-auto lg:bottom-0 lg:z-[60] lg:block lg:border-e-0 lg:pt-0 lg:w-64"
+        className={`fixed top-0 start-0 bottom-0 z-[60] w-64 bg-white dark:bg-gray-900 border-e border-gray-200 dark:border-gray-700 pt-7 pb-10 overflow-y-auto transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:end-auto lg:bottom-0 lg:z-[60] lg:block lg:border-e-0 lg:pt-0 ${
+          isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
       >
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
@@ -123,7 +134,8 @@ function Sidebar() {
             <button
               type="button"
               className="lg:hidden text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-              data-hs-overlay="#application-sidebar"
+              onClick={onClose}
+              aria-label="Close sidebar"
             >
               <svg
                 className="flex-shrink-0 size-4"
@@ -173,6 +185,12 @@ function Sidebar() {
               <li key={item.path}>
                 <NavLink
                   to={item.path}
+                  onClick={() => {
+                    // Close sidebar on mobile when link is clicked
+                    if (window.innerWidth < 1024 && onClose) {
+                      onClose();
+                    }
+                  }}
                   className={`flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 ${
                     isActive ? 'bg-gray-100 dark:bg-gray-800 font-semibold' : ''
                   }`}
@@ -272,7 +290,6 @@ function Sidebar() {
           <UserProfile />
         </div>
       </div>
-      <div className="hs-overlay-backdrop fixed inset-0 z-[59] bg-gray-900 bg-opacity-50 hidden"></div>
     </>
   );
 }

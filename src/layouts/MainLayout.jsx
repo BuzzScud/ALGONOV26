@@ -1,10 +1,45 @@
 import { Outlet } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 
 function MainLayout() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+
+  const closeSidebar = () => {
+    setSidebarOpen(false);
+  };
+
+  // Close sidebar when window is resized to desktop size
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Lock body scroll when sidebar is open on mobile
+  useEffect(() => {
+    if (sidebarOpen && window.innerWidth < 1024) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [sidebarOpen]);
+
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-      <Sidebar />
+      <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
       <main className="flex-1 overflow-y-auto">
         <div className="sticky top-0 inset-x-0 z-20 bg-white dark:bg-gray-900 border-y border-gray-200 dark:border-gray-700 px-4 sm:px-6 md:px-8 lg:hidden">
           <div className="flex justify-between items-center gap-x-4">
@@ -12,9 +47,10 @@ function MainLayout() {
               <button
                 type="button"
                 className="text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                data-hs-overlay="#application-sidebar"
+                onClick={toggleSidebar}
                 aria-controls="application-sidebar"
                 aria-label="Toggle navigation"
+                aria-expanded={sidebarOpen}
               >
                 <svg
                   className="flex-shrink-0 size-4"
