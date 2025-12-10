@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
+import UserProfile from '../components/UserProfile';
 
 function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -40,13 +41,14 @@ function MainLayout() {
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
-      <main className="flex-1 overflow-y-auto">
-        <div className="sticky top-0 inset-x-0 z-20 bg-white dark:bg-gray-900 border-y border-gray-200 dark:border-gray-700 px-4 sm:px-6 md:px-8 lg:hidden">
-          <div className="flex justify-between items-center gap-x-4">
+      <main className="flex-1 overflow-y-auto flex flex-col">
+        {/* Header Bar - Mobile and Desktop */}
+        <div className="sticky top-0 inset-x-0 z-20 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 md:px-8">
+          <div className="flex justify-between items-center gap-x-4 h-16">
             <div className="flex items-center gap-x-4">
               <button
                 type="button"
-                className="text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                className="lg:hidden text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 onClick={toggleSidebar}
                 aria-controls="application-sidebar"
                 aria-label="Toggle navigation"
@@ -71,9 +73,13 @@ function MainLayout() {
               </button>
               <span className="text-xl font-semibold text-gray-800 dark:text-white">App</span>
             </div>
+            {/* User Profile in Main Window Header */}
+            <div className="flex items-center">
+              <UserProfile />
+            </div>
           </div>
         </div>
-        <div className="p-4 sm:p-6 lg:p-8">
+        <div className="flex-1 p-4 sm:p-6 lg:p-8">
           <Outlet />
         </div>
       </main>
