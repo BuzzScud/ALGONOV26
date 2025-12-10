@@ -81,14 +81,14 @@ function UserProfile() {
   };
 
   const handleCancel = () => {
-    setEditForm(userData);
-    setIsEditing(false);
+    setEditForm(userData); // Reset form to current data
+    setIsEditing(false); // Switch back to view mode
   };
 
   const handleClose = () => {
     setShowProfile(false);
     setIsEditing(false);
-    setEditForm(userData);
+    setEditForm(userData); // Reset form to current data when closing
   };
 
   const handleInputChange = (field, value) => {
@@ -106,7 +106,11 @@ function UserProfile() {
       {/* Profile Card - Clickable */}
       <div
         className="flex items-center gap-x-3 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-        onClick={() => setShowProfile(true)}
+        onClick={() => {
+          setShowProfile(true);
+          setIsEditing(false); // Always open in view mode first
+          setEditForm(userData); // Reset form to current data
+        }}
         role="button"
         tabIndex={0}
         aria-label="User profile"
@@ -148,8 +152,8 @@ function UserProfile() {
             aria-hidden="true"
           />
           
-          {/* Modal Content */}
-          <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-md max-h-[90vh] overflow-y-auto z-10">
+          {/* Modal Content - Centered */}
+          <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-md max-h-[90vh] overflow-y-auto z-10 transform transition-all">
           {!isEditing ? (
             // View Mode
             <>
