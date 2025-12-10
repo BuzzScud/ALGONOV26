@@ -118,92 +118,97 @@ function Sidebar({ isOpen, onClose }) {
       
       <div
         id="application-sidebar"
-        className={`fixed top-0 start-0 bottom-0 z-[60] w-64 bg-white dark:bg-gray-900 border-e border-gray-200 dark:border-gray-700 pt-7 pb-10 overflow-y-auto transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:end-auto lg:bottom-0 lg:z-[60] lg:block lg:border-e-0 lg:pt-0 ${
+        className={`fixed top-0 start-0 bottom-0 z-[60] w-64 bg-white dark:bg-gray-900 border-e border-gray-200 dark:border-gray-700 transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:end-auto lg:bottom-0 lg:z-[60] lg:block lg:border-e-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <Link
-              className="flex-none text-xl font-semibold text-gray-800 dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-              to="/"
-              aria-label="Brand"
-            >
-              App
-            </Link>
-            <button
-              type="button"
-              className="lg:hidden text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-              onClick={onClose}
-              aria-label="Close sidebar"
-            >
-              <svg
-                className="flex-shrink-0 size-4"
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+        <div className="flex flex-col h-full overflow-hidden">
+          {/* Header - Fixed */}
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <Link
+                className="flex-none text-xl font-semibold text-gray-800 dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                to="/"
+                aria-label="Brand"
               >
-                <path d="m18 6-12 12" />
-                <path d="m6 6 12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-      <nav
-        className="hs-accordion-group p-6 w-full flex flex-col flex-wrap"
-        data-hs-accordion-always-open
-      >
-        <ul className="space-y-1.5">
-          {navItems.map((item) => {
-            // Check if current path matches nav item path
-            // Special handling for nested routes - check exact matches first
-            let isActive = false;
-            
-            if (item.path === '/') {
-              // For root path, only match exactly
-              isActive = location.pathname === '/';
-            } else if (item.path === '/projection') {
-              // For /projection, only match if it's exactly /projection (not /projection/fib)
-              isActive = location.pathname === '/projection';
-            } else if (item.path === '/projection/fib') {
-              // For /projection/fib, match exactly
-              isActive = location.pathname === '/projection/fib';
-            } else {
-              // For other paths, match exact or if pathname starts with path + '/'
-              isActive = location.pathname === item.path || 
-                location.pathname.startsWith(item.path + '/');
-            }
-            
-            return (
-              <li key={item.path}>
-                <NavLink
-                  to={item.path}
-                  onClick={() => {
-                    // Close sidebar on mobile when link is clicked
-                    if (window.innerWidth < 1024 && onClose) {
-                      onClose();
-                    }
-                  }}
-                  className={`flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 ${
-                    isActive ? 'bg-gray-100 dark:bg-gray-800 font-semibold' : ''
-                  }`}
+                App
+              </Link>
+              <button
+                type="button"
+                className="lg:hidden text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                onClick={onClose}
+                aria-label="Close sidebar"
+              >
+                <svg
+                  className="flex-shrink-0 size-4"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 >
-                  <span>{item.label}</span>
-                </NavLink>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+                  <path d="m18 6-12 12" />
+                  <path d="m6 6 12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
 
-        <div className="absolute bottom-0 left-0 right-0 p-6 space-y-4">
+          {/* Scrollable Content Area */}
+          <div className="flex-1 overflow-y-auto overscroll-contain">
+            <nav
+              className="hs-accordion-group p-6 w-full flex flex-col"
+              data-hs-accordion-always-open
+            >
+              <ul className="space-y-1.5">
+                {navItems.map((item) => {
+                  // Check if current path matches nav item path
+                  // Special handling for nested routes - check exact matches first
+                  let isActive = false;
+                  
+                  if (item.path === '/') {
+                    // For root path, only match exactly
+                    isActive = location.pathname === '/';
+                  } else if (item.path === '/projection') {
+                    // For /projection, only match if it's exactly /projection (not /projection/fib)
+                    isActive = location.pathname === '/projection';
+                  } else if (item.path === '/projection/fib') {
+                    // For /projection/fib, match exactly
+                    isActive = location.pathname === '/projection/fib';
+                  } else {
+                    // For other paths, match exact or if pathname starts with path + '/'
+                    isActive = location.pathname === item.path || 
+                      location.pathname.startsWith(item.path + '/');
+                  }
+                  
+                  return (
+                    <li key={item.path}>
+                      <NavLink
+                        to={item.path}
+                        onClick={() => {
+                          // Close sidebar on mobile when link is clicked
+                          if (window.innerWidth < 1024 && onClose) {
+                            onClose();
+                          }
+                        }}
+                        className={`flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 ${
+                          isActive ? 'bg-gray-100 dark:bg-gray-800 font-semibold' : ''
+                        }`}
+                      >
+                        <span>{item.label}</span>
+                      </NavLink>
+                    </li>
+                  );
+                })}
+              </ul>
+            </nav>
+
+            {/* Bottom Section - Scrollable with rest of content */}
+            <div className="p-6 pt-0 space-y-4 pb-6">
           {/* Sidebar Clocks with Numerology */}
           <div className="space-y-3 mb-4 max-h-[400px] overflow-y-auto">
             {clocks.map((clock) => (
@@ -287,7 +292,9 @@ function Sidebar({ isOpen, onClose }) {
               />
             </button>
           </div>
-          <UserProfile />
+              <UserProfile />
+            </div>
+          </div>
         </div>
       </div>
     </>
