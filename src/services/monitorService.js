@@ -928,7 +928,9 @@ export const getPriceChartData = async (symbol, interval = '1d') => {
       range = '1mo'; // 1 month for daily data
     }
     
-    const result = await fetchMarketData(symbol, yahooInterval, range);
+    // prioritizeYahoo = true because we need historical data for charts
+    // Finnhub only provides current quote, not historical data
+    const result = await fetchMarketData(symbol, yahooInterval, range, true);
     
     // Only Yahoo Finance provides historical chart data
     if (result.source === 'finnhub') {
