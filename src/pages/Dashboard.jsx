@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { fetchYahooFinance } from '../services/monitorService';
 import { calculateUniversalDayNumber, getNumerologyForecast } from '../utils/numerology';
 
 // Helper function to check if US market is currently open
@@ -56,15 +55,39 @@ const getStockPrice = async (symbol) => {
     const interval = isMarketOpen() ? '5m' : '1d';
     const range = isMarketOpen() ? '1d' : '1d';
     
-    const response = await fetchYahooFinance(symbol, interval, range);
+    // Import fetchMarketData which handles both Yahoo and Finnhub
+    const { fetchMarketData } = await import('../services/monitorService');
+    const response = await fetchMarketData(symbol, interval, range);
     
-    // fetchYahooFinance returns { data, source: 'yahoo' }
     if (!response || !response.data) {
       throw new Error('Invalid response format');
     }
     
     const data = response.data;
+    const source = response.source;
     
+    // Handle Finnhub data format (flat object with c, pc, h, l, o, v)
+    if (source === 'finnhub') {
+      const currentPrice = data.c || 0;
+      const previousClose = data.pc || currentPrice;
+      const change = currentPrice - previousClose;
+      const changePercent = previousClose > 0 ? (change / previousClose) * 100 : 0;
+      
+      // Finnhub doesn't provide market state, check by time
+      const marketState = isMarketOpen() ? 'REGULAR' : 'CLOSED';
+      
+      return {
+        symbol,
+        price: currentPrice,
+        change,
+        changePercent,
+        previousClose: previousClose,
+        marketState: marketState,
+        volume: data.v || 0,
+      };
+    }
+    
+    // Handle Yahoo Finance data format
     if (!data?.chart?.result?.[0]) {
       throw new Error('Invalid data format: missing chart result');
     }
@@ -166,7 +189,7 @@ const getStockPrice = async (symbol) => {
       previousClose: 0,
       marketState: marketState,
       volume: 0,
-      error: error.message || 'Invalid data format',
+      error: 'Failed to fetch data. Please try again.',
     };
   }
 };

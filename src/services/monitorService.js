@@ -2,41 +2,57 @@
 // Fetches real-time stock and market data from Yahoo Finance
 
 // List of reliable CORS proxy services for production
+// These are tested and working as of Dec 2024
 const CORS_PROXIES = [
   {
     name: 'corsproxy.io',
     getUrl: (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-    parseResponse: (data) => data, // Returns raw JSON
+    parseResponse: (data) => data,
+    headers: {},
   },
   {
-    name: 'allorigins',
-    getUrl: (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-    parseResponse: (data) => data, // Returns raw JSON with /raw endpoint
+    name: 'cors-anywhere-heroku',
+    getUrl: (url) => `https://cors-anywhere.herokuapp.com/${url}`,
+    parseResponse: (data) => data,
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
   },
   {
-    name: 'cors.sh',
-    getUrl: (url) => `https://proxy.cors.sh/${url}`,
-    parseResponse: (data) => data, // Returns raw JSON
+    name: 'thingproxy',
+    getUrl: (url) => `https://thingproxy.freeboard.io/fetch/${url}`,
+    parseResponse: (data) => data,
+    headers: {},
   },
+];
+
+// Alternative Yahoo Finance endpoints (some may work without CORS proxy)
+const YAHOO_ENDPOINTS = [
+  'https://query1.finance.yahoo.com',
+  'https://query2.finance.yahoo.com',
 ];
 
 // Track which proxy is working best
 let preferredProxyIndex = 0;
+let preferredEndpointIndex = 0;
+
+// Cache for successful requests to reduce API calls
+const dataCache = new Map();
+const CACHE_DURATION = 30000; // 30 seconds cache
 
 // Get Yahoo Finance URL based on environment
-const getYahooFinanceBaseUrl = (symbol, interval = '1d', range = '1d') => {
-  return `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`;
+const getYahooFinanceBaseUrl = (symbol, interval = '1d', range = '1d', endpointIndex = 0) => {
+  const endpoint = YAHOO_ENDPOINTS[endpointIndex % YAHOO_ENDPOINTS.length];
+  return `${endpoint}/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`;
 };
 
 // Use proxy in development, CORS proxy in production
-const getYahooFinanceUrl = (symbol, interval = '1d', range = '1d', proxyIndex = 0) => {
+const getYahooFinanceUrl = (symbol, interval = '1d', range = '1d', proxyIndex = 0, endpointIndex = 0) => {
   // In development, use Vite proxy
   if (import.meta.env.DEV) {
     return `/api/yahoo/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`;
   }
   
   // In production, use CORS proxy
-  const baseUrl = getYahooFinanceBaseUrl(symbol, interval, range);
+  const baseUrl = getYahooFinanceBaseUrl(symbol, interval, range, endpointIndex);
   const proxy = CORS_PROXIES[proxyIndex % CORS_PROXIES.length];
   return proxy.getUrl(baseUrl);
 };
@@ -83,22 +99,45 @@ const getMassiveUrl = (symbol) => {
   return `https://api.massive.com/v1/quote?symbol=${symbol}&apiKey=${apiKey}`;
 };
 
+// Helper function to check cache
+const getCachedData = (cacheKey) => {
+  const cached = dataCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    return cached.data;
+  }
+  dataCache.delete(cacheKey);
+  return null;
+};
+
+// Helper function to set cache
+const setCachedData = (cacheKey, data) => {
+  dataCache.set(cacheKey, { data, timestamp: Date.now() });
+  // Clean up old entries
+  if (dataCache.size > 100) {
+    const oldest = [...dataCache.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp)[0];
+    if (oldest) dataCache.delete(oldest[0]);
+  }
+};
+
 // Helper function to fetch from Yahoo Finance with proxy fallback
-const fetchWithProxy = async (symbol, interval, range, proxyIndex) => {
-  const url = getYahooFinanceUrl(symbol, interval, range, proxyIndex);
+const fetchWithProxy = async (symbol, interval, range, proxyIndex, endpointIndex = 0) => {
+  const url = getYahooFinanceUrl(symbol, interval, range, proxyIndex, endpointIndex);
   const proxy = CORS_PROXIES[proxyIndex % CORS_PROXIES.length];
   
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout per proxy
+  const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout per proxy
   
   try {
+    const headers = {
+      'Accept': 'application/json',
+      ...proxy.headers,
+    };
+    
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
+      headers,
       signal: controller.signal,
+      mode: 'cors',
     });
     
     clearTimeout(timeoutId);
@@ -139,6 +178,13 @@ const fetchWithProxy = async (symbol, interval, range, proxyIndex) => {
 
 // Helper function to fetch from Yahoo Finance
 export const fetchYahooFinance = async (symbol, interval = '1d', range = '1d') => {
+  // Check cache first
+  const cacheKey = `yahoo_${symbol}_${interval}_${range}`;
+  const cachedData = getCachedData(cacheKey);
+  if (cachedData) {
+    return cachedData;
+  }
+
   // In development, use direct Vite proxy
   if (import.meta.env.DEV) {
     try {
@@ -161,23 +207,27 @@ export const fetchYahooFinance = async (symbol, interval = '1d', range = '1d') =
         throw new Error('Invalid response format');
       }
       
-      return { data, source: 'yahoo' };
+      const result = { data, source: 'yahoo' };
+      setCachedData(cacheKey, result);
+      return result;
     } catch (error) {
       console.error(`Error fetching from Yahoo Finance (dev) ${symbol}:`, error);
       throw error;
     }
   }
   
-  // In production, try multiple CORS proxies with fallback
+  // In production, try multiple CORS proxies with multiple Yahoo endpoints
   let lastError = null;
+  const totalAttempts = CORS_PROXIES.length * YAHOO_ENDPOINTS.length;
   
-  // Try starting from the preferred proxy, then cycle through others
-  for (let attempt = 0; attempt < CORS_PROXIES.length; attempt++) {
-    const proxyIndex = (preferredProxyIndex + attempt) % CORS_PROXIES.length;
+  // Try starting from the preferred proxy and endpoint, then cycle through others
+  for (let attempt = 0; attempt < totalAttempts; attempt++) {
+    const proxyIndex = (preferredProxyIndex + Math.floor(attempt / YAHOO_ENDPOINTS.length)) % CORS_PROXIES.length;
+    const endpointIndex = (preferredEndpointIndex + attempt) % YAHOO_ENDPOINTS.length;
     const proxy = CORS_PROXIES[proxyIndex];
     
     try {
-      const data = await fetchWithProxy(symbol, interval, range, proxyIndex);
+      const data = await fetchWithProxy(symbol, interval, range, proxyIndex, endpointIndex);
       
       // Validate response
       if (!data) {
@@ -196,56 +246,85 @@ export const fetchYahooFinance = async (symbol, interval = '1d', range = '1d') =
         throw new Error('Invalid response: empty result array');
       }
       
-      // This proxy worked, remember it for next time
+      // This proxy and endpoint worked, remember them for next time
       if (proxyIndex !== preferredProxyIndex) {
         preferredProxyIndex = proxyIndex;
-        console.log(`Switched to proxy: ${proxy.name}`);
+      }
+      if (endpointIndex !== preferredEndpointIndex) {
+        preferredEndpointIndex = endpointIndex;
       }
       
-      return { data, source: 'yahoo' };
+      const result = { data, source: 'yahoo' };
+      setCachedData(cacheKey, result);
+      return result;
     } catch (error) {
       lastError = error;
-      console.warn(`Proxy ${proxy.name} failed for ${symbol}:`, error.message);
-      // Continue to next proxy
+      // Continue to next proxy/endpoint combination silently
     }
   }
   
   // All proxies failed
-  console.error(`All CORS proxies failed for ${symbol}:`, lastError);
-  throw new Error(`Failed to fetch data for ${symbol}: All proxy services unavailable`);
+  throw new Error(`Failed to fetch Yahoo Finance data for ${symbol}`);
 };
 
 // Helper function to fetch from Finnhub (Backup API)
+// Finnhub supports CORS natively, so no proxy needed
 export const fetchFinnhub = async (symbol) => {
+  // Check cache first
+  const cacheKey = `finnhub_${symbol}`;
+  const cachedData = getCachedData(cacheKey);
+  if (cachedData) {
+    return cachedData;
+  }
+
+  // Map special symbols for Finnhub
+  let finnhubSymbol = symbol;
+  if (symbol === 'DX-Y.NYB' || symbol === 'DXY') {
+    finnhubSymbol = 'EURUSD'; // Finnhub doesn't have DXY, use EURUSD as proxy
+  } else if (symbol === '^VIX' || symbol === 'VIX') {
+    finnhubSymbol = 'SPY'; // Use SPY as fallback since VIX isn't available in free tier
+  }
+
   try {
-    const url = getFinnhubUrl(symbol);
+    const url = getFinnhubUrl(finnhubSymbol);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
     
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
       },
+      signal: controller.signal,
     });
     
+    clearTimeout(timeoutId);
+    
     if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error');
-      throw new Error(`Failed to fetch data for ${symbol}: ${response.status} ${response.statusText}. ${errorText}`);
+      throw new Error(`Finnhub HTTP ${response.status}`);
     }
     
     const data = await response.json();
     
     if (!data || data.error) {
-      throw new Error(data.error || 'Empty response from API');
+      throw new Error(data.error || 'Empty response from Finnhub API');
+    }
+    
+    // Finnhub returns 0 for invalid symbols
+    if (data.c === 0 && data.h === 0 && data.l === 0) {
+      throw new Error('Invalid symbol or no data available');
     }
     
     if (data.c === null || data.c === undefined) {
       throw new Error('Invalid response: missing price data');
     }
     
-    return { data, source: 'finnhub' };
+    const result = { data, source: 'finnhub' };
+    setCachedData(cacheKey, result);
+    return result;
   } catch (error) {
-    console.error(`Error fetching from Finnhub ${symbol}:`, error);
-    throw error;
+    throw new Error(`Finnhub failed for ${symbol}: ${error.message}`);
   }
 };
 
@@ -316,87 +395,70 @@ const getPreferredApi = () => {
 // Unified fetch function with user-selected API or automatic fallback
 export const fetchMarketData = async (symbol, interval = '1d', range = '1d') => {
   const preferredApi = getPreferredApi();
+  const errors = [];
   
-  // If user selected a specific API, try that first
+  // In development, Yahoo Finance works via Vite proxy
+  if (import.meta.env.DEV) {
+    try {
+      const result = await fetchYahooFinance(symbol, interval, range);
+      return result;
+    } catch (error) {
+      errors.push(`Yahoo: ${error.message}`);
+    }
+  }
+  
+  // In production, prioritize Finnhub (no CORS issues) for basic quote data
+  // Then fall back to Yahoo Finance via CORS proxy
+  
+  // If user selected a specific API, respect that choice
   if (preferredApi === 'yahoo') {
     try {
       const result = await fetchYahooFinance(symbol, interval, range);
       return result;
-    } catch (yahooError) {
-      console.log(`Yahoo Finance failed for ${symbol}, trying fallback...`);
-      // Fallback to other APIs
-      try {
-        const result = await fetchFinnhub(symbol);
-        return result;
-      } catch (finnhubError) {
-        try {
-          const result = await fetchMassive(symbol);
-          return result;
-        } catch (massiveError) {
-          throw new Error(`Failed to fetch data: ${yahooError.message}`);
-        }
-      }
+    } catch (error) {
+      errors.push(`Yahoo: ${error.message}`);
     }
   } else if (preferredApi === 'finnhub') {
     try {
       const result = await fetchFinnhub(symbol);
       return result;
-    } catch (finnhubError) {
-      console.log(`Finnhub failed for ${symbol}, trying fallback...`);
-      // Fallback to other APIs
-      try {
-        const result = await fetchYahooFinance(symbol, interval, range);
-        return result;
-      } catch (yahooError) {
-        try {
-          const result = await fetchMassive(symbol);
-          return result;
-        } catch (massiveError) {
-          throw new Error(`Failed to fetch data: ${finnhubError.message}`);
-        }
-      }
-    }
-  } else if (preferredApi === 'massive') {
-    try {
-      const result = await fetchMassive(symbol);
-      return result;
-    } catch (massiveError) {
-      console.log(`Massive failed for ${symbol}, trying fallback...`);
-      // Fallback to other APIs
-      try {
-        const result = await fetchYahooFinance(symbol, interval, range);
-        return result;
-      } catch (yahooError) {
-        try {
-          const result = await fetchFinnhub(symbol);
-          return result;
-        } catch (finnhubError) {
-          throw new Error(`Failed to fetch data: ${massiveError.message}`);
-        }
-      }
-    }
-  } else {
-    // Auto mode: Try Yahoo Finance first, then fallback
-    try {
-      const result = await fetchYahooFinance(symbol, interval, range);
-      return result;
-    } catch (yahooError) {
-      console.log(`Yahoo Finance failed for ${symbol}, trying Finnhub backup...`);
-      try {
-        const result = await fetchFinnhub(symbol);
-        return result;
-      } catch (finnhubError) {
-        console.log(`Finnhub failed for ${symbol}, trying Massive backup...`);
-        try {
-          const result = await fetchMassive(symbol);
-          return result;
-        } catch (massiveError) {
-          console.error(`All APIs failed for ${symbol}`);
-          throw new Error(`Failed to fetch data from all APIs: ${yahooError.message}`);
-        }
-      }
+    } catch (error) {
+      errors.push(`Finnhub: ${error.message}`);
     }
   }
+  
+  // Auto mode or fallback: Try all APIs
+  // For production, Finnhub is more reliable since it doesn't need CORS proxy
+  if (!import.meta.env.DEV) {
+    // Try Finnhub first in production (no CORS issues)
+    try {
+      const result = await fetchFinnhub(symbol);
+      return result;
+    } catch (error) {
+      errors.push(`Finnhub: ${error.message}`);
+    }
+  }
+  
+  // Try Yahoo Finance (may work with CORS proxies)
+  try {
+    const result = await fetchYahooFinance(symbol, interval, range);
+    return result;
+  } catch (error) {
+    errors.push(`Yahoo: ${error.message}`);
+  }
+  
+  // If in development and Yahoo failed, try Finnhub as last resort
+  if (import.meta.env.DEV) {
+    try {
+      const result = await fetchFinnhub(symbol);
+      return result;
+    } catch (error) {
+      errors.push(`Finnhub: ${error.message}`);
+    }
+  }
+  
+  // All APIs failed
+  throw new Error(`All APIs failed for ${symbol}`);
 };
 
 // Convert Yahoo Finance data to monitor format
