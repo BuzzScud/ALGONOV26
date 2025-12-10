@@ -57,12 +57,12 @@ function App() {
           <Route path="/" element={<MainLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="news" element={<News />} />
-            <Route path="trading" element={<Trading />} />
-            <Route path="notes" element={<Notes />} />
-            <Route path="projection">
-              <Route index element={<Projection />} />
+            <Route path="trading">
+              <Route index element={<Trading />} />
               <Route path="fib" element={<FIB />} />
             </Route>
+            <Route path="notes" element={<Notes />} />
+            <Route path="projection" element={<Projection />} />
             <Route path="data" element={<Data />} />
             <Route path="api" element={<API />} />
             <Route path="settings" element={<Settings />} />

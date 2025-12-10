@@ -12,6 +12,9 @@
 
 /* Hide scrollbars but maintain scroll functionality */
 html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
   overflow: -moz-scrollbars-none; /* Firefox - hide scrollbar */
   -ms-overflow-style: none; /* IE and Edge - hide scrollbar */
   scrollbar-width: none; /* Firefox - hide scrollbar */
@@ -23,8 +26,10 @@ html::-webkit-scrollbar {
 
 body {
   margin: 0;
+  padding: 0;
   min-width: 320px;
-  min-height: 100vh;
+  height: 100%;
+  overflow: hidden; /* Prevent body scroll - layout handles scrolling */
   overflow: -moz-scrollbars-none; /* Firefox - hide scrollbar */
   -ms-overflow-style: none; /* IE and Edge - hide scrollbar */
   scrollbar-width: none; /* Firefox - hide scrollbar */
@@ -32,6 +37,13 @@ body {
 
 body::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera - hide scrollbar */
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 /* Hide scrollbars for all elements but maintain scroll functionality */

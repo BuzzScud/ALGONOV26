@@ -97,9 +97,9 @@ function Sidebar({ isOpen, onClose }) {
     { path: '/', label: 'Dashboard' },
     { path: '/news', label: 'News' },
     { path: '/trading', label: 'Charts' },
-    { path: '/notes', label: 'Notes' },
-    { path: '/projection/fib', label: 'FIB' },
+    { path: '/trading/fib', label: 'Fib' },
     { path: '/projection', label: 'Projection' },
+    { path: '/notes', label: 'Notes' },
     { path: '/data', label: 'Data' },
     { path: '/api', label: 'API' },
     { path: '/settings', label: 'Settings' },
@@ -170,10 +170,10 @@ function Sidebar({ isOpen, onClose }) {
                   
                   if (item.path === '/') {
                     isActive = location.pathname === '/';
-                  } else if (item.path === '/projection') {
-                    isActive = location.pathname === '/projection';
-                  } else if (item.path === '/projection/fib') {
-                    isActive = location.pathname === '/projection/fib';
+                  } else if (item.path === '/trading') {
+                    isActive = location.pathname === '/trading';
+                  } else if (item.path === '/trading/fib') {
+                    isActive = location.pathname === '/trading/fib';
                   } else {
                     isActive = location.pathname === item.path || 
                       location.pathname.startsWith(item.path + '/');

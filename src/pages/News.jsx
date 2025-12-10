@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getNewsByCategory, searchNews } from '../services/newsService';
 
+const ARTICLES_PER_PAGE = 10;
+
 function News() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [news, setNews] = useState([]);
@@ -11,6 +13,7 @@ function News() {
   const [lastRefresh, setLastRefresh] = useState(null);
   const [newsSource, setNewsSource] = useState(null);
   const [newsSources, setNewsSources] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const categories = [
     { id: 'all', label: 'All News' },
@@ -68,6 +71,7 @@ function News() {
     setIsSearching(true);
     setLoading(true);
     setError(null);
+    setCurrentPage(1); // Reset to first page on new search
     
     try {
       const result = await searchNews(query.trim());
@@ -107,6 +111,42 @@ function News() {
   const handleCategoryChange = (categoryId) => {
     setSelectedCategory(categoryId);
     setSearchQuery(''); // Clear search when changing category
+    setCurrentPage(1); // Reset to first page
+  };
+
+  // Pagination calculations
+  const totalPages = Math.ceil(news.length / ARTICLES_PER_PAGE);
+  const startIndex = (currentPage - 1) * ARTICLES_PER_PAGE;
+  const endIndex = startIndex + ARTICLES_PER_PAGE;
+  const currentArticles = news.slice(startIndex, endIndex);
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Generate page numbers to display
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 3;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 2) {
+        pages.push(1, 2, 3);
+      } else if (currentPage >= totalPages - 1) {
+        pages.push(totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(currentPage - 1, currentPage, currentPage + 1);
+      }
+    }
+    
+    return pages;
   };
 
   const handleRefresh = () => {
@@ -348,7 +388,7 @@ function News() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {news.map((item) => (
+            {currentArticles.map((item) => (
               <article
                 key={item.id}
                 className="border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors p-4"
@@ -431,6 +471,95 @@ function News() {
                 </div>
               </article>
             ))}
+          </div>
+        )}
+
+        {/* Preline Pagination - Disabled and Active State */}
+        {!loading && news.length > ARTICLES_PER_PAGE && (
+          <nav className="flex items-center justify-center gap-x-1 mt-8" aria-label="Pagination">
+            {/* Previous Button */}
+            <button
+              type="button"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className={`min-h-[38px] min-w-[38px] py-2 px-2.5 inline-flex justify-center items-center gap-x-1.5 text-sm rounded-lg ${
+                currentPage === 1
+                  ? 'text-gray-400 dark:text-neutral-600 pointer-events-none'
+                  : 'text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-white/10'
+              }`}
+              aria-label="Previous"
+            >
+              <svg
+                className="shrink-0 size-3.5"
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="m15 18-6-6 6-6" />
+              </svg>
+              <span>Previous</span>
+            </button>
+
+            {/* Page Numbers */}
+            <div className="flex items-center gap-x-1">
+              {getPageNumbers().map((page) => (
+                <button
+                  key={page}
+                  type="button"
+                  onClick={() => handlePageChange(page)}
+                  className={`min-h-[38px] min-w-[38px] flex justify-center items-center py-2 px-3 text-sm rounded-lg ${
+                    currentPage === page
+                      ? 'bg-gray-200 dark:bg-neutral-700 text-gray-800 dark:text-white font-medium'
+                      : 'text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-white/10'
+                  }`}
+                  aria-current={currentPage === page ? 'page' : undefined}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+
+            {/* Next Button */}
+            <button
+              type="button"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className={`min-h-[38px] min-w-[38px] py-2 px-2.5 inline-flex justify-center items-center gap-x-1.5 text-sm rounded-lg ${
+                currentPage === totalPages
+                  ? 'text-gray-400 dark:text-neutral-600 pointer-events-none'
+                  : 'text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-white/10'
+              }`}
+              aria-label="Next"
+            >
+              <span>Next</span>
+              <svg
+                className="shrink-0 size-3.5"
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="m9 18 6-6-6-6" />
+              </svg>
+            </button>
+          </nav>
+        )}
+
+        {/* Page Info */}
+        {!loading && news.length > 0 && (
+          <div className="text-center mt-4 text-sm text-gray-500 dark:text-gray-400">
+            Showing {startIndex + 1}-{Math.min(endIndex, news.length)} of {news.length} articles
           </div>
         )}
       </div>

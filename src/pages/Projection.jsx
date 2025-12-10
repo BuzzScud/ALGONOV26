@@ -2696,17 +2696,21 @@ function Projection() {
   }, []);
 
   return (
-    <div className="w-full max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Price Projection</h1>
-        <p className="text-gray-600 dark:text-gray-400">Prime Tetration Projections</p>
+    <div className="w-full max-w-[1800px] mx-auto px-4 flex flex-col h-full min-h-0 overflow-hidden">
+      {/* Header */}
+      <div className="text-center mb-3 flex-shrink-0">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
+          Price Projection
+        </h1>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-200 dark:border-gray-700">
-        <div className="flex flex-col lg:flex-row gap-4 items-end">
-          <div className="flex-1 relative">
-            <label htmlFor="symbol" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              Stock Symbol
+      {/* Input Controls - Compact Row */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-3 border border-gray-200 dark:border-gray-700 mb-3 flex-shrink-0">
+        <div className="flex flex-wrap items-end gap-3">
+          {/* Symbol Input */}
+          <div className="flex-1 min-w-[160px] relative">
+            <label htmlFor="symbol" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              Symbol
             </label>
             <div className="relative">
               <input
@@ -2728,8 +2732,8 @@ function Projection() {
                 onBlur={() => {
                   setTimeout(() => setShowRecentSearches(false), 200);
                 }}
-                placeholder="Enter symbol (e.g., AAPL, TSLA, MSFT)"
-                className="w-full px-4 py-3 pr-10 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all"
+                placeholder="AAPL, TSLA"
+                className="w-full px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
               />
               {symbol && (
                 <button
@@ -2739,18 +2743,18 @@ function Projection() {
                     setShowRecentSearches(false);
                     inputRef.current?.focus();
                   }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               )}
               
               {showRecentSearches && recentSearches.length > 0 && !loading && (
-                <div className="absolute z-10 w-full mt-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto" style={{ zIndex: 10 }}>
-                  <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600">
-                    Recent Searches
+                <div className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-32 overflow-y-auto">
+                  <div className="px-2 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600">
+                    Recent
                   </div>
                   {recentSearches.map((searchKey) => {
                     const [sym, int] = searchKey.split('-');
@@ -2759,7 +2763,7 @@ function Projection() {
                         key={searchKey}
                         type="button"
                         onClick={() => handleRecentSearch(searchKey)}
-                        className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center justify-between transition-colors"
+                        className="w-full px-2 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center justify-between transition-colors text-sm"
                       >
                         <span className="font-medium text-gray-900 dark:text-white">{sym}</span>
                         <span className="text-xs text-gray-500 dark:text-gray-400">{int}</span>
@@ -2770,40 +2774,42 @@ function Projection() {
               )}
             </div>
           </div>
-          
-          <div className="w-full lg:w-auto">
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              Time Interval
+
+          {/* Time Interval */}
+          <div className="min-w-[100px]">
+            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              Interval
             </label>
-            <div className="flex gap-2 bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
+            <div className="flex gap-1">
               <button
                 type="button"
                 onClick={() => handleIntervalChange('1D')}
-                className={`px-6 py-2 rounded-md font-medium transition-all ${
+                className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-all ${
                   interval === '1D'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
-                1 Day
+                1D
               </button>
               <button
                 type="button"
                 onClick={() => handleIntervalChange('1H')}
-                className={`px-6 py-2 rounded-md font-medium transition-all ${
+                className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-all ${
                   interval === '1H'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
-                1 Hour
+                1H
               </button>
             </div>
           </div>
 
-          <div className="w-full lg:w-auto">
-            <label htmlFor="projectionSteps" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              Projection Steps
+          {/* Projection Steps */}
+          <div className="min-w-[70px]">
+            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              Steps
             </label>
             <select
               id="projectionSteps"
@@ -2815,764 +2821,379 @@ function Projection() {
                   setTimeout(() => loadChartData(), 100);
                 }
               }}
-                className="w-full lg:w-32 px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all"
-              >
-                <option value={10}>10 Steps</option>
-                <option value={20}>20 Steps</option>
-                <option value={40}>40 Steps</option>
-                <option value={60}>60 Steps</option>
-              </select>
-          </div>
-          
-          <div className="w-full lg:w-auto">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleSearch();
-              }}
-              disabled={loading || !symbol || !symbol.trim()}
-              className="w-full lg:w-auto px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed disabled:opacity-50 shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 relative z-0"
+              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-xs focus:outline-none focus:border-purple-500"
             >
-              {loading ? (
-                <>
-                  <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>Loading...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <span>Search</span>
-                </>
-              )}
-            </button>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={40}>40</option>
+              <option value={60}>60</option>
+            </select>
           </div>
-        </div>
 
-        <div className="mt-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              Projection Model Configuration
-            </h3>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Configure your projection parameters</p>
-          </div>
-          
-          <div className="p-6 space-y-6">
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
-                Projection Model
-              </label>
-              <div className="w-full px-4 py-3 border-2 border-purple-500 dark:border-purple-400 rounded-lg bg-purple-50 dark:bg-purple-900/20 transition-all text-sm font-medium">
-                <div className="flex items-center gap-2">
-                  <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="text-purple-700 dark:text-purple-300 font-semibold">Prime Tetration Projections</span>
-                </div>
-              </div>
-            </div>
-
-            {projectionModel === 'primetetration' && (
+          {/* Search Button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleSearch();
+            }}
+            disabled={loading || !symbol || !symbol.trim()}
+            className="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded shadow-sm hover:shadow transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-1.5"
+          >
+            {loading ? (
               <>
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
-                    <svg className="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                    </svg>
-                    Core Parameters
-                  </h4>
-                  
-                  {/* Base, Omega, and Schedule Options Grouped Box */}
-                  <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 mb-6 border border-gray-200 dark:border-gray-700">
-                    <h5 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-                      <svg className="w-3 h-3 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                      Seed, Frequency & Schedules
-                    </h5>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                            Base (seed)
-                          </label>
-                          <label className="inline-flex items-center cursor-pointer">
-                            <input 
-                              type="checkbox" 
-                              checked={base === 3}
-                              onChange={() => {
-                                const newBase = base === 3 ? 2 : 3;
-                                setBase(newBase);
-                                if (chartData) {
-                                  setTimeout(() => loadChartData(), 100);
-                                }
-                              }}
-                              className="sr-only peer" 
-                            />
-                            <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                            <span className="ms-3 text-sm font-medium text-gray-700 dark:text-gray-300">
-                              {base === 3 ? '3 (preferred)' : '2 (Enigma-style)'}
-                            </span>
-                          </label>
-                        </div>
-
-                        <div className="space-y-2">
-                          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                            Ω (Omega Hz)
-                          </label>
-                          <label className="inline-flex items-center cursor-pointer">
-                            <input 
-                              type="checkbox" 
-                              checked={omegaHz === 528}
-                              onChange={() => {
-                                const newOmegaHz = omegaHz === 432 ? 528 : 432;
-                                setOmegaHz(newOmegaHz);
-                                if (chartData) {
-                                  setTimeout(() => loadChartData(), 100);
-                                }
-                              }}
-                              className="sr-only peer" 
-                            />
-                            <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                            <span className="ms-3 text-sm font-medium text-gray-700 dark:text-gray-300">
-                              {omegaHz} Hz
-                            </span>
-                          </label>
-                        </div>
-                      </div>
-
-                      <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
-                        <div className="flex flex-wrap gap-6">
-                          <label className="inline-flex items-center cursor-pointer group">
-                            <input 
-                              type="checkbox" 
-                              checked={useLambdaSchedule}
-                              onChange={(e) => {
-                                setUseLambdaSchedule(e.target.checked);
-                                if (chartData) {
-                                  setTimeout(() => loadChartData(), 100);
-                                }
-                              }}
-                              className="sr-only peer" 
-                            />
-                            <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                            <span className="ms-3 text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
-                              Use λ Schedule (dub, kubt, k'anch)
-                            </span>
-                          </label>
-                          <label className="inline-flex items-center cursor-pointer group">
-                            <input 
-                              type="checkbox" 
-                              checked={useOmegaSchedule}
-                              onChange={(e) => {
-                                setUseOmegaSchedule(e.target.checked);
-                                if (chartData) {
-                                  setTimeout(() => loadChartData(), 100);
-                                }
-                              }}
-                              className="sr-only peer" 
-                            />
-                            <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                            <span className="ms-3 text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                              Use Ω Schedule (vary frequencies)
-                            </span>
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label htmlFor="projectionCount" className="block text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                        Projections Count
-                      </label>
-                      <input
-                        type="number"
-                        id="projectionCount"
-                        min="1"
-                        max="50"
-                        step="1"
-                        value={projectionCount}
-                        onChange={(e) => {
-                          const inputValue = e.target.value;
-                          if (inputValue === '') {
-                            // Allow empty input while typing
-                            return;
-                          }
-                          const value = parseInt(inputValue, 10);
-                          if (!isNaN(value) && value >= 1 && value <= 50) {
-                            setProjectionCount(value);
-                            if (chartData) {
-                              setTimeout(() => loadChartData(), 100);
-                            }
-                          }
-                        }}
-                        onBlur={(e) => {
-                          const inputValue = e.target.value;
-                          if (inputValue === '' || isNaN(parseInt(inputValue, 10))) {
-                            setProjectionCount(12);
-                            if (chartData) {
-                              setTimeout(() => loadChartData(), 100);
-                            }
-                          } else {
-                            const value = parseInt(inputValue, 10);
-                            if (value < 1) {
-                              setProjectionCount(1);
-                              if (chartData) {
-                                setTimeout(() => loadChartData(), 100);
-                              }
-                            } else if (value > 50) {
-                              setProjectionCount(50);
-                              if (chartData) {
-                                setTimeout(() => loadChartData(), 100);
-                              }
-                            }
-                          }
-                        }}
-                        className="w-full px-4 py-2.5 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white transition-all text-sm font-medium bg-white"
-                        placeholder="Enter number (1-50)"
-                      />
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Range: 1-50 projections</p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                        Prime Depth
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {PRIME_STOPS.map((prime) => {
-                          const isSelected = PRIME_STOPS[primeDepthIndex] === prime;
-                          return (
-                            <button
-                              key={prime}
-                              type="button"
-                              onClick={() => {
-                                const newIndex = PRIME_STOPS.indexOf(prime);
-                            setPrimeDepthIndex(newIndex);
-                                setPrimeDepthInput(prime);
-                            if (chartData) {
-                              setTimeout(() => loadChartData(), 100);
-                            }
-                        }}
-                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                                isSelected
-                                  ? 'bg-purple-600 text-white shadow-md ring-2 ring-purple-400 dark:ring-purple-500'
-                                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-2 border-gray-300 dark:border-gray-600 hover:border-purple-400 dark:hover:border-purple-500 hover:text-purple-600 dark:hover:text-purple-400'
-                              }`}
-                            >
-                              {prime}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Selected: {PRIME_STOPS[primeDepthIndex] || 31}</p>
-                    </div>
-                  </div>
-                </div>
+                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                Loading...
+              </>
+            ) : (
+              <>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                Search
               </>
             )}
-            
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-6 flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {saveSuccess ? (
-                    <span className="text-green-600 dark:text-green-400 font-medium flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Projection saved successfully!
-                    </span>
-                  ) : (
-                    'Save this projection configuration to view it later on the Data page'
-                  )}
-                </p>
-              </div>
-              <button
-                onClick={handleSaveProjection}
-                disabled={saving || !symbol || !symbol.trim() || (!chartData && !snapshotData)}
-                className="px-6 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm font-semibold rounded-lg hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed disabled:opacity-50 shadow-md hover:shadow-lg transition-all flex items-center gap-2"
-                title={!symbol || !symbol.trim() ? 'Enter a stock symbol first' : (!chartData && !snapshotData) ? 'Load chart data first' : 'Save projection to Data page'}
-              >
-                {saving ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Saving...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                    </svg>
-                    <span>Save Projection</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
+          </button>
         </div>
 
-        {projectionLoaded && (
-          <div className="mt-4 bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 rounded-lg p-4">
-            <div className="flex items-start">
-              <svg className="w-5 h-5 text-green-500 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                  Projection loaded successfully! You can now edit the parameters and save changes.
-                </p>
-                <p className="text-xs text-green-600 dark:text-green-300 mt-1">
-                  All saved data has been restored. Modify any settings and click "Save Projection" to update.
-                </p>
-              </div>
-              <button
-                onClick={() => setProjectionLoaded(false)}
-                className="ml-2 text-green-500 hover:text-green-700 dark:hover:text-green-300"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        )}
-
         {error && (
-          <div className="mt-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 rounded-lg p-4">
-            <div className="flex items-start">
-              <svg className="w-5 h-5 text-red-500 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-              <div>
-                <p className="text-sm font-medium text-red-800 dark:text-red-200">{error}</p>
-                <p className="text-xs text-red-600 dark:text-red-300 mt-1">Please check the symbol and try again</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {chartData && (
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Price Metrics</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-5 border border-blue-200 dark:border-blue-800 shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Current Price</p>
-                  <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                  {chartData?.currentPrice !== undefined && chartData.currentPrice !== null ? (
-                    `$${chartData.currentPrice.toFixed(2)}`
-                  ) : (
-                    <span className="text-gray-400">N/A</span>
-                  )}
-                </p>
-              </div>
-              
-              <div className={`rounded-xl p-5 border shadow-sm ${
-                chartData && chartData.change >= 0
-                  ? 'bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200 dark:border-green-800'
-                  : 'bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border-red-200 dark:border-red-800'
-              }`}>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Historical Change</p>
-                  {chartData && (
-                    <svg className={`w-4 h-4 ${chartData.change >= 0 ? 'text-green-500' : 'text-red-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      {chartData.change >= 0 ? (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                      ) : (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-                      )}
-                    </svg>
-                  )}
-                </div>
-                <p className={`text-xl font-bold ${
-                  chartData.change >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
-                }`}>
-                  {chartData?.change !== undefined && chartData.change !== null ? (
-                    `${chartData.change >= 0 ? '+' : ''}$${Math.abs(chartData.change).toFixed(2)}`
-                  ) : (
-                    <span className="text-gray-400">--</span>
-                  )}
-                </p>
-                {chartData?.changePercent !== undefined && chartData.changePercent !== null && (
-                  <p className={`text-xs mt-1 ${
-                    chartData.changePercent >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                  }`}>
-                    {chartData.changePercent >= 0 ? '+' : ''}{chartData.changePercent.toFixed(2)}%
-                  </p>
-                )}
-              </div>
-              
-              <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl p-5 border border-purple-200 dark:border-purple-800 shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wide">Projected Price</p>
-                  <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                </div>
-                <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">
-                  {chartData?.projectedPrice !== undefined && chartData.projectedPrice !== null && chartData.projectedPrice > 0 ? (
-                    (() => {
-                      const price = chartData.projectedPrice;
-                      // Format price appropriately
-                      if (price >= 1000) {
-                        return `$${price.toFixed(2)}`;
-                      } else if (price >= 1) {
-                        return `$${price.toFixed(2)}`;
-                      } else {
-                        return `$${price.toFixed(4)}`;
-                      }
-                    })()
-                  ) : (
-                    <span className="text-gray-400">N/A</span>
-                  )}
-                </p>
-              </div>
-              
-              <div className={`rounded-xl p-5 border shadow-sm ${
-                chartData && chartData.projectedChange >= 0
-                  ? 'bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200 dark:border-green-800'
-                  : 'bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border-red-200 dark:border-red-800'
-              }`}>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Projected Change</p>
-                  {chartData && (
-                    <svg className={`w-4 h-4 ${chartData.projectedChange >= 0 ? 'text-green-500' : 'text-red-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      {chartData.projectedChange >= 0 ? (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                      ) : (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-                      )}
-                    </svg>
-                  )}
-                </div>
-                <p className={`text-xl font-bold ${
-                  chartData.projectedChange >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
-                }`}>
-                  {chartData?.projectedChange !== undefined && chartData.projectedChange !== null ? (
-                    (() => {
-                      const change = chartData.projectedChange;
-                      // Format dollar change appropriately
-                      if (Math.abs(change) >= 1000) {
-                        return `${change >= 0 ? '+' : ''}$${Math.abs(change).toFixed(2)}`;
-                      } else if (Math.abs(change) >= 1) {
-                        return `${change >= 0 ? '+' : ''}$${Math.abs(change).toFixed(2)}`;
-                      } else {
-                        return `${change >= 0 ? '+' : ''}$${Math.abs(change).toFixed(4)}`;
-                      }
-                    })()
-                  ) : (
-                    <span className="text-gray-400">--</span>
-                  )}
-                </p>
-                {chartData?.projectedChangePercent !== undefined && chartData.projectedChangePercent !== null && (
-                  <p className={`text-xs mt-1 ${
-                    chartData.projectedChangePercent >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                  }`}>
-                    {(() => {
-                      const percent = chartData.projectedChangePercent;
-                      // Format to avoid scientific notation
-                      if (Math.abs(percent) >= 1000) {
-                        return `${percent >= 0 ? '+' : ''}${percent.toFixed(0)}%`;
-                      } else if (Math.abs(percent) >= 100) {
-                        return `${percent >= 0 ? '+' : ''}${percent.toFixed(1)}%`;
-                      } else {
-                        return `${percent >= 0 ? '+' : ''}${percent.toFixed(2)}%`;
-                      }
-                    })()}
-                  </p>
-                )}
-              </div>
-              
-              <div className={`rounded-xl p-5 border shadow-sm ${
-                chartData && chartData.projectedChangePercent >= 0
-                  ? 'bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200 dark:border-green-800'
-                  : 'bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border-red-200 dark:border-red-800'
-              }`}>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Change %</p>
-                  {chartData && (
-                    <svg className={`w-4 h-4 ${chartData.projectedChangePercent >= 0 ? 'text-green-500' : 'text-red-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      {chartData.projectedChangePercent >= 0 ? (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                      ) : (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-                      )}
-                    </svg>
-                  )}
-                </div>
-                <p className={`text-xl font-bold ${
-                  chartData.projectedChangePercent >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
-                }`}>
-                  {chartData?.projectedChangePercent !== undefined && chartData.projectedChangePercent !== null ? (
-                    (() => {
-                      const percent = chartData.projectedChangePercent;
-                      // Format to avoid scientific notation for large numbers
-                      if (Math.abs(percent) >= 1000) {
-                        return `${percent >= 0 ? '+' : ''}${percent.toFixed(0)}%`;
-                      } else if (Math.abs(percent) >= 100) {
-                        return `${percent >= 0 ? '+' : ''}${percent.toFixed(1)}%`;
-                      } else {
-                        return `${percent >= 0 ? '+' : ''}${percent.toFixed(2)}%`;
-                      }
-                    })()
-                  ) : (
-                    <span className="text-gray-400">--</span>
-                  )}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Projected</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {modelParams && (
-          <div className="mt-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setShowModelParams(!showModelParams)}
-              className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-                </svg>
-                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
-                  Prime Tetration Parameters
-                </h4>
-              </div>
-              <svg
-                className={`w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${
-                  showModelParams ? 'rotate-180' : ''
-                }`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            
-            {showModelParams && (
-              <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900/30">
-                <div className="flex flex-col gap-4">
-                  {projectionModel === 'primetetration' ? (
-                    <>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-500 dark:text-gray-400">Depth Prime:</span>
-                          <span className="font-mono font-semibold text-gray-900 dark:text-white">{modelParams.depthPrime}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-500 dark:text-gray-400">Base:</span>
-                          <span className="font-mono font-semibold text-gray-900 dark:text-white">{modelParams.base}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-500 dark:text-gray-400">Lines:</span>
-                          <span className="font-mono font-semibold text-gray-900 dark:text-white">{modelParams.lines}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-500 dark:text-gray-400">Beta:</span>
-                          <span className="font-mono font-semibold text-gray-900 dark:text-white">{modelParams.beta}</span>
-                        </div>
-                      </div>
-                      
-                      {modelParams.phi && Array.isArray(modelParams.phi) && (
-                        <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-                          <div className="flex flex-col gap-2">
-                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">Full φ_d: [3,7,31,12,19,5,11,13,17,23,29,31]</span>
-                            <span className="text-xs text-gray-500 dark:text-gray-400">+8 bits truncation active</span>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {snapshotData && snapshotData.lines && snapshotData.lines.length > 0 && (
-                        <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-                          <div className="flex flex-col gap-2">
-                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">Oscillation Stats:</span>
-                            <div className="flex flex-wrap gap-2">
-                              {snapshotData.lines.slice(0, 6).map((line, idx) => (
-                                <div key={idx} className="text-xs font-mono text-gray-900 dark:text-white bg-purple-100 dark:bg-purple-900/30 px-3 py-2 rounded flex flex-col gap-1">
-                                  <span className="font-semibold">L{idx+1}[{line.triad.join('-')}]</span>
-                                  <span className="text-gray-600 dark:text-gray-400">zc={line.zeroCrossings}, tp={line.turningPoints}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  ) : null}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {(lastRefresh || chartData) && (
-          <div className="mt-4 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-            <div className="flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>{lastRefresh ? `Last updated: ${lastRefresh.toLocaleString('en-US', { timeZone: 'America/New_York' })}` : 'Ready to load data'}</span>
-            </div>
-            {chartData && (
-              <button
-                type="button"
-                onClick={handleRefresh}
-                disabled={loading}
-                className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 disabled:text-gray-400 transition-colors"
-              >
-                <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <span>Refresh</span>
-              </button>
-            )}
+          <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded text-xs flex items-center gap-1.5">
+            <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            {error}
           </div>
         )}
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-200 dark:border-gray-700">
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Price Projection Chart</h3>
-              {symbol && currentInterval && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  {symbol.toUpperCase()} - {currentInterval} interval - {projectionSteps} step projection
-                </p>
-              )}
-            </div>
-            {chartData && (
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-4 text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                    <span className="text-gray-600 dark:text-gray-400">Historical</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-purple-500 border-2 border-dashed border-purple-500"></div>
-                    <span className="text-gray-600 dark:text-gray-400">Projected</span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleResetZoom}
-                  className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
-                  title="Reset zoom and pan"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Reset Zoom
-                </button>
-              </div>
-            )}
-          </div>
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setShowModelInfo(!showModelInfo)}
-              className="w-full flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 hover:bg-gray-100 dark:hover:bg-gray-900/70 transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      {/* Main Content - Two Column Layout */}
+      <div className="grid grid-cols-1 xl:grid-cols-[300px_1fr] gap-3 flex-1 min-h-0 overflow-hidden">
+        {/* Left Panel - Symbol Info + Configuration */}
+        <div className="flex flex-col gap-3 min-h-0 overflow-hidden">
+          {/* Symbol Info Box */}
+          {chartData ? (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-3 flex-shrink-0">
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                  About Prime Tetration Projections
-                </span>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Symbol Info</h3>
               </div>
-              <svg
-                className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${showModelInfo ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {showModelInfo && (
-              <div className="p-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-                <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
-                  Prime Tetration Projections use the full crystalline 12-dimensional lattice with triadic prime exponentiation towers. Each projection line represents a different prime triad [p1,p2,p3] with amplitude A = base^(p2^p3) mod 2^72. The lattice oscillator Z(n) aggregates all 12 φ_d dimensions without dimension sweeping. All calculations use Q8 fixed-point truncation (+8 guard bits).
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="h-[600px] relative">
-          {chartData && 
-           Array.isArray(chartData.labels) && 
-           chartData.labels.length > 0 && 
-           Array.isArray(chartData.datasets) && 
-           chartData.datasets.length > 0 && 
-           chartData.datasets[0] && 
-           Array.isArray(chartData.datasets[0].data) && 
-           chartData.datasets[0].data.some(d => d !== null && d !== undefined) ? (
-            <>
-              {loading && (
-                <div className="absolute inset-0 bg-white/90 dark:bg-gray-800/90 z-10 flex items-center justify-center backdrop-blur-sm">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-200 border-t-blue-600 mx-auto"></div>
-                  </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded p-2">
+                  <span className="text-gray-500 dark:text-gray-400 block">Symbol</span>
+                  <span className="font-bold text-gray-900 dark:text-white text-sm">{symbol}</span>
                 </div>
-              )}
-              <Line
-                ref={chartRef}
-                key={`chart-${symbol}-${interval}-${projectionSteps}-${chartData.labels?.length || 0}`}
-                data={{
-                  labels: Array.isArray(chartData.labels) ? chartData.labels : [],
-                  datasets: Array.isArray(chartData.datasets) ? chartData.datasets.map(dataset => ({
-                    ...dataset,
-                    data: Array.isArray(dataset.data) ? dataset.data : []
-                  })) : []
-                }}
-                options={{
-                  ...lineChartOptions.current,
-                  responsive: true,
-                  maintainAspectRatio: false,
-                }}
-                redraw
-              />
-            </>
-          ) : loading ? (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600 mx-auto mb-4"></div>
-                <p className="text-gray-600 dark:text-gray-400 font-medium">Loading chart data...</p>
-                <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">Please wait</p>
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded p-2">
+                  <span className="text-gray-500 dark:text-gray-400 block">Current</span>
+                  <span className="font-bold text-gray-900 dark:text-white text-sm">${chartData?.currentPrice?.toFixed(2) || 'N/A'}</span>
+                </div>
+                <div className="bg-purple-50 dark:bg-purple-900/30 rounded p-2">
+                  <span className="text-gray-500 dark:text-gray-400 block">Projected</span>
+                  <span className="font-bold text-purple-600 dark:text-purple-400 text-sm">${chartData?.projectedPrice?.toFixed(2) || 'N/A'}</span>
+                </div>
+                <div className={`rounded p-2 ${chartData?.projectedChange >= 0 ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30'}`}>
+                  <span className="text-gray-500 dark:text-gray-400 block">Change</span>
+                  <span className={`font-bold text-sm ${chartData?.projectedChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {chartData?.projectedChange >= 0 ? '+' : ''}{chartData?.projectedChangePercent?.toFixed(2) || '0'}%
+                  </span>
+                </div>
               </div>
             </div>
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 p-3 flex-shrink-0">
+              <div className="text-center text-xs text-gray-500 dark:text-gray-400">
+                <svg className="w-6 h-6 mx-auto mb-1 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <p className="text-gray-600 dark:text-gray-400 font-medium mb-2">No chart data available</p>
-                <p className="text-sm text-gray-500 dark:text-gray-500">Please try searching again or check the symbol</p>
+                Enter a symbol to see info
               </div>
             </div>
           )}
+
+          {/* Model Configuration Box */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col flex-1 min-h-0">
+            <div className="px-3 py-2.5 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 flex-shrink-0">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-1.5">
+                <svg className="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                </svg>
+                Model Configuration
+              </h2>
+            </div>
+            
+            <div className="p-3 flex-1 overflow-y-auto space-y-3">
+              {/* Model Type Badge */}
+              <div className="px-2.5 py-1.5 bg-purple-50 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-700 rounded-lg text-xs font-semibold text-purple-600 dark:text-purple-400 flex items-center justify-center gap-1.5">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Prime Tetration
+              </div>
+
+              {/* Base & Frequency Controls */}
+              <div className="space-y-2">
+                <div className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Parameters</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-2 border border-gray-200 dark:border-gray-600">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Base</span>
+                      <span className="text-xs font-bold text-purple-600 dark:text-purple-400">{base}</span>
+                    </div>
+                    <label className="inline-flex items-center cursor-pointer w-full justify-center">
+                      <input 
+                        type="checkbox" 
+                        checked={base === 3}
+                        onChange={() => {
+                          const newBase = base === 3 ? 2 : 3;
+                          setBase(newBase);
+                          if (chartData) setTimeout(() => loadChartData(), 100);
+                        }}
+                        className="sr-only peer" 
+                      />
+                      <div className="relative w-9 h-5 bg-gray-300 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:bg-purple-600 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+                    </label>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-2 border border-gray-200 dark:border-gray-600">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Ω Hz</span>
+                      <span className="text-xs font-bold text-green-600 dark:text-green-400">{omegaHz}</span>
+                    </div>
+                    <label className="inline-flex items-center cursor-pointer w-full justify-center">
+                      <input 
+                        type="checkbox" 
+                        checked={omegaHz === 528}
+                        onChange={() => {
+                          const newOmegaHz = omegaHz === 432 ? 528 : 432;
+                          setOmegaHz(newOmegaHz);
+                          if (chartData) setTimeout(() => loadChartData(), 100);
+                        }}
+                        className="sr-only peer" 
+                      />
+                      <div className="relative w-9 h-5 bg-gray-300 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:bg-green-600 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Schedule Options */}
+              <div className="space-y-2">
+                <div className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Schedules</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="inline-flex items-center cursor-pointer bg-gray-50 dark:bg-gray-700/50 rounded-lg px-2.5 py-2 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                    <input 
+                      type="checkbox" 
+                      checked={useLambdaSchedule}
+                      onChange={(e) => {
+                        setUseLambdaSchedule(e.target.checked);
+                        if (chartData) setTimeout(() => loadChartData(), 100);
+                      }}
+                      className="sr-only peer" 
+                    />
+                    <div className="relative w-7 h-4 bg-gray-300 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:bg-purple-600 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all"></div>
+                    <span className="ms-2 text-xs font-medium text-gray-700 dark:text-gray-300">λ Schedule</span>
+                  </label>
+                  <label className="inline-flex items-center cursor-pointer bg-gray-50 dark:bg-gray-700/50 rounded-lg px-2.5 py-2 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                    <input 
+                      type="checkbox" 
+                      checked={useOmegaSchedule}
+                      onChange={(e) => {
+                        setUseOmegaSchedule(e.target.checked);
+                        if (chartData) setTimeout(() => loadChartData(), 100);
+                      }}
+                      className="sr-only peer" 
+                    />
+                    <div className="relative w-7 h-4 bg-gray-300 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all"></div>
+                    <span className="ms-2 text-xs font-medium text-gray-700 dark:text-gray-300">Ω Schedule</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Count Input */}
+              <div className="space-y-2">
+                <div className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Projection Count</div>
+                <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg p-2 border border-gray-200 dark:border-gray-600">
+                  <span className="text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">Count</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={projectionCount}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value, 10);
+                      if (!isNaN(value) && value >= 1 && value <= 50) {
+                        setProjectionCount(value);
+                        if (chartData) setTimeout(() => loadChartData(), 100);
+                      }
+                    }}
+                    className="flex-1 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+
+              {/* Prime Depth Selection */}
+              <div className="space-y-2">
+                <div className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Prime Depth</div>
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-2 border border-gray-200 dark:border-gray-600">
+                  <div className="flex flex-wrap gap-1.5">
+                    {PRIME_STOPS.map((prime) => {
+                      const isSelected = PRIME_STOPS[primeDepthIndex] === prime;
+                      return (
+                        <button
+                          key={prime}
+                          type="button"
+                          onClick={() => {
+                            const newIndex = PRIME_STOPS.indexOf(prime);
+                            setPrimeDepthIndex(newIndex);
+                            setPrimeDepthInput(prime);
+                            if (chartData) setTimeout(() => loadChartData(), 100);
+                          }}
+                          className={`px-2 py-1 rounded-md text-xs font-semibold transition-all ${
+                            isSelected
+                              ? 'bg-purple-600 text-white shadow-md'
+                              : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-purple-100 dark:hover:bg-purple-900/30 border border-gray-200 dark:border-gray-600'
+                          }`}
+                        >
+                          {prime}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Save Button */}
+              <div className="pt-1">
+                <button
+                  onClick={handleSaveProjection}
+                  disabled={saving || !symbol || !symbol.trim() || (!chartData && !snapshotData)}
+                  className="w-full px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm hover:shadow transition-all"
+                >
+                  {saving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                      </svg>
+                      <span>Save Projection</span>
+                    </>
+                  )}
+                </button>
+                {saveSuccess && (
+                  <p className="text-[10px] text-green-600 dark:text-green-400 text-center mt-1.5 font-medium">✓ Saved successfully!</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Panel - Chart */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col min-h-0">
+          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-between flex-shrink-0">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-1.5">
+              <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+              </svg>
+              Price Projection Chart
+            </h2>
+            <div className="flex items-center gap-3 text-[10px]">
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                <span className="text-gray-500 dark:text-gray-400">Historical</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                <span className="text-gray-500 dark:text-gray-400">Projected</span>
+              </div>
+              {chartData && (
+                <button
+                  type="button"
+                  onClick={handleResetZoom}
+                  className="flex items-center gap-0.5 px-1.5 py-0.5 text-gray-500 hover:text-purple-600 bg-gray-100 dark:bg-gray-700 rounded transition-colors"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Reset
+                </button>
+              )}
+            </div>
+          </div>
+          
+          <div className="p-2 flex-1 min-h-0">
+            <div className="w-full h-full relative">
+              {chartData && 
+               Array.isArray(chartData.labels) && 
+               chartData.labels.length > 0 && 
+               Array.isArray(chartData.datasets) && 
+               chartData.datasets.length > 0 && 
+               chartData.datasets[0] && 
+               Array.isArray(chartData.datasets[0].data) && 
+               chartData.datasets[0].data.some(d => d !== null && d !== undefined) ? (
+                <>
+                  {loading && (
+                    <div className="absolute inset-0 bg-white/90 dark:bg-gray-800/90 z-10 flex items-center justify-center backdrop-blur-sm rounded-lg">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-200 border-t-purple-600 mx-auto"></div>
+                      </div>
+                    </div>
+                  )}
+                  <Line
+                    ref={chartRef}
+                    key={`chart-${symbol}-${interval}-${projectionSteps}-${chartData.labels?.length || 0}`}
+                    data={{
+                      labels: Array.isArray(chartData.labels) ? chartData.labels : [],
+                      datasets: Array.isArray(chartData.datasets) ? chartData.datasets.map(dataset => ({
+                        ...dataset,
+                        data: Array.isArray(dataset.data) ? dataset.data : []
+                      })) : []
+                    }}
+                    options={{
+                      ...lineChartOptions.current,
+                      responsive: true,
+                      maintainAspectRatio: false,
+                    }}
+                    redraw
+                  />
+                </>
+              ) : loading ? (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-3 border-purple-200 border-t-purple-600 mx-auto mb-2"></div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Loading...</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-center">
+                    <svg className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                    </svg>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Enter a symbol to get started</p>
+                    <div className="flex flex-wrap justify-center gap-1.5">
+                      {['AAPL', 'TSLA', 'NVDA', 'MSFT'].map(s => (
+                        <button
+                          key={s}
+                          onClick={() => {
+                            setSymbol(s);
+                            setTimeout(() => handleSearch(), 100);
+                          }}
+                          className="px-2 py-1 text-[10px] font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-purple-100 hover:text-purple-600 transition-colors"
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

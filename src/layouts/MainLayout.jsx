@@ -38,10 +38,10 @@ function MainLayout() {
   }, [sidebarOpen]);
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
       <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
-      <main className="flex-1 overflow-y-auto">
-        <div className="sticky top-0 inset-x-0 z-20 bg-white dark:bg-gray-900 border-y border-gray-200 dark:border-gray-700 px-4 sm:px-6 md:px-8 lg:hidden">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <div className="sticky top-0 inset-x-0 z-20 bg-white dark:bg-gray-900 border-y border-gray-200 dark:border-gray-700 px-4 sm:px-6 md:px-8 lg:hidden flex-shrink-0">
           <div className="flex justify-between items-center gap-x-4">
             <div className="flex items-center gap-x-4">
               <button
@@ -73,7 +73,7 @@ function MainLayout() {
             </div>
           </div>
         </div>
-        <div className="p-4 sm:p-6 lg:p-8">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 min-h-0">
           <Outlet />
         </div>
       </main>

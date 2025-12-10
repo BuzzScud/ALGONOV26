@@ -638,19 +638,24 @@ function Trading() {
   }, []);
 
   return (
-    <div className="w-full max-w-7xl mx-auto">
-      {/* Header Section */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Charts</h1>
-        <p className="text-gray-600 dark:text-gray-400">Real-time stock market data and analysis</p>
+    <div className="w-full max-w-[1800px] mx-auto px-4 flex flex-col h-full min-h-0 overflow-hidden">
+      {/* Header */}
+      <div className="text-center mb-3 flex-shrink-0">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
+          Charts
+        </h1>
+        <p className="text-xs text-gray-600 dark:text-gray-400">
+          Real-time stock market data and analysis
+        </p>
       </div>
 
-      {/* Search Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-200 dark:border-gray-700">
-        <div className="flex flex-col lg:flex-row gap-4 items-end">
-          <div className="flex-1 relative">
-            <label htmlFor="symbol" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              Stock Symbol
+      {/* Input Controls - Compact Row */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-3 border border-gray-200 dark:border-gray-700 mb-3 flex-shrink-0">
+        <div className="flex flex-wrap items-end gap-3">
+          {/* Symbol Input */}
+          <div className="flex-1 min-w-[160px] relative">
+            <label htmlFor="symbol" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              Symbol
             </label>
             <div className="relative">
               <input
@@ -670,11 +675,10 @@ function Trading() {
                   }
                 }}
                 onBlur={() => {
-                  // Delay hiding to allow click on recent searches
                   setTimeout(() => setShowRecentSearches(false), 200);
                 }}
-                placeholder="Enter symbol (e.g., AAPL, TSLA, MSFT)"
-                className="w-full px-4 py-3 pr-10 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all"
+                placeholder="AAPL, TSLA, MSFT"
+                className="w-full px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
               />
               {symbol && (
                 <button
@@ -684,9 +688,9 @@ function Trading() {
                     setShowRecentSearches(false);
                     inputRef.current?.focus();
                   }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -694,9 +698,9 @@ function Trading() {
               
               {/* Recent Searches Dropdown */}
               {showRecentSearches && recentSearches.length > 0 && !loading && (
-                <div className="absolute z-10 w-full mt-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                  <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600">
-                    Recent Searches
+                <div className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-32 overflow-y-auto">
+                  <div className="px-2 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600">
+                    Recent
                   </div>
                   {recentSearches.map((searchKey) => {
                     const [sym, int] = searchKey.split('-');
@@ -705,7 +709,7 @@ function Trading() {
                         key={searchKey}
                         type="button"
                         onClick={() => handleRecentSearch(searchKey)}
-                        className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center justify-between transition-colors"
+                        className="w-full px-2 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center justify-between transition-colors text-sm"
                       >
                         <span className="font-medium text-gray-900 dark:text-white">{sym}</span>
                         <span className="text-xs text-gray-500 dark:text-gray-400">{int}</span>
@@ -716,310 +720,318 @@ function Trading() {
               )}
             </div>
           </div>
-          
-          <div className="w-full lg:w-auto">
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              Time Interval
+
+          {/* Time Interval */}
+          <div className="min-w-[100px]">
+            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              Interval
             </label>
-            <div className="flex gap-2 bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
+            <div className="flex gap-1">
               <button
                 type="button"
                 onClick={() => handleIntervalChange('1D')}
-                className={`px-6 py-2 rounded-md font-medium transition-all ${
+                className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-all ${
                   interval === '1D'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
-                1 Day
+                1D
               </button>
               <button
                 type="button"
                 onClick={() => handleIntervalChange('1H')}
-                className={`px-6 py-2 rounded-md font-medium transition-all ${
+                className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-all ${
                   interval === '1H'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
-                1 Hour
+                1H
               </button>
             </div>
           </div>
-          
-          <div className="w-full lg:w-auto">
-            <button
-              type="button"
-              onClick={handleSearch}
-              disabled={loading || !symbol || !symbol.trim()}
-              className="w-full lg:w-auto px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>Loading...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <span>Search</span>
-                </>
-              )}
-            </button>
-          </div>
+
+          {/* Search Button */}
+          <button
+            type="button"
+            onClick={handleSearch}
+            disabled={loading || !symbol || !symbol.trim()}
+            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm hover:shadow transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-1.5"
+          >
+            {loading ? (
+              <>
+                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                Loading...
+              </>
+            ) : (
+              <>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                Search
+              </>
+            )}
+          </button>
         </div>
+
+        {/* Market Data Summary - Shows when data is loaded */}
+        {chartData && (
+          <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+              <div className="flex items-center gap-1">
+                <span className="text-gray-500 dark:text-gray-400">Symbol:</span>
+                <span className="font-bold text-gray-900 dark:text-white">{symbol}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-gray-500 dark:text-gray-400">Current:</span>
+                <span className="font-semibold text-gray-900 dark:text-white">${chartData?.currentPrice?.toFixed(2) || 'N/A'}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-gray-500 dark:text-gray-400">Change:</span>
+                <span className={`font-semibold ${chartData?.change >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {chartData?.change >= 0 ? '+' : ''}${chartData?.change?.toFixed(2) || '0.00'} ({chartData?.changePercent >= 0 ? '+' : ''}{chartData?.changePercent?.toFixed(2) || '0.00'}%)
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-gray-500 dark:text-gray-400">Interval:</span>
+                <span className="font-semibold text-blue-600 dark:text-blue-400">{currentInterval || 'N/A'}</span>
+              </div>
+              {lastRefresh && (
+                <div className="flex items-center gap-1">
+                  <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-gray-500 dark:text-gray-400 text-[10px]">
+                    {lastRefresh.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              )}
+              {chartData && (
+                <button
+                  type="button"
+                  onClick={handleRefresh}
+                  disabled={loading}
+                  className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 disabled:text-gray-400 transition-colors text-xs"
+                >
+                  <svg className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Refresh
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {error && (
-          <div className="mt-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 rounded-lg p-4">
-            <div className="flex items-start">
-              <svg className="w-5 h-5 text-red-500 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-              <div>
-                <p className="text-sm font-medium text-red-800 dark:text-red-200">{error}</p>
-                <p className="text-xs text-red-600 dark:text-red-300 mt-1">Please check the symbol and try again</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Price Summary Card */}
-        {(chartData || loading) && (
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-              <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">Current Price</p>
-              <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                {loading && !chartData ? (
-                  <span className="text-gray-400">Loading...</span>
-                ) : (
-                  `$${chartData?.currentPrice?.toFixed(2) || 'N/A'}`
-                )}
-              </p>
-            </div>
-            <div className={`rounded-lg p-4 border ${
-              !chartData || chartData.change >= 0 
-                ? 'bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200 dark:border-green-800'
-                : 'bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border-red-200 dark:border-red-800'
-            }`}>
-              <p className="text-xs font-medium mb-1 text-gray-600 dark:text-gray-400">Change</p>
-              <p className={`text-xl font-bold ${
-                !chartData || chartData.change >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
-              }`}>
-                {loading && !chartData ? (
-                  <span className="text-gray-400">--</span>
-                ) : chartData ? (
-                  `${chartData.change >= 0 ? '+' : ''}$${chartData.change.toFixed(2)}`
-                ) : (
-                  '--'
-                )}
-              </p>
-            </div>
-            <div className={`rounded-lg p-4 border ${
-              !chartData || chartData.changePercent >= 0 
-                ? 'bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200 dark:border-green-800'
-                : 'bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border-red-200 dark:border-red-800'
-            }`}>
-              <p className="text-xs font-medium mb-1 text-gray-600 dark:text-gray-400">Change %</p>
-              <p className={`text-xl font-bold ${
-                !chartData || chartData.changePercent >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
-              }`}>
-                {loading && !chartData ? (
-                  <span className="text-gray-400">--</span>
-                ) : chartData ? (
-                  `${chartData.changePercent >= 0 ? '+' : ''}${chartData.changePercent.toFixed(2)}%`
-                ) : (
-                  '--'
-                )}
-              </p>
-            </div>
-            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Interval</p>
-              <p className="text-xl font-bold text-gray-900 dark:text-white">
-                {currentInterval || 'N/A'}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Last Refresh Info */}
-        {(lastRefresh || chartData) && (
-          <div className="mt-4 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-            <div className="flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>{lastRefresh ? `Last updated: ${lastRefresh.toLocaleString('en-US', { timeZone: 'America/New_York' })}` : 'Ready to load data'}</span>
-            </div>
-            {chartData && (
-              <button
-                type="button"
-                onClick={handleRefresh}
-                disabled={loading}
-                className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 disabled:text-gray-400 transition-colors"
-              >
-                <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <span>Refresh</span>
-              </button>
-            )}
+          <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded text-xs flex items-center gap-1.5">
+            <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            {error}
           </div>
         )}
       </div>
 
-      {/* Price Chart Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Price Chart</h3>
-            {symbol && currentInterval && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {symbol.toUpperCase()} - {currentInterval} interval
-              </p>
-            )}
+      {/* Main Content - Charts */}
+      {!chartData && !loading ? (
+        /* Initial State - Before Search */
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-8 text-center flex-1">
+          <div className="max-w-md mx-auto">
+            <svg className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+            </svg>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Enter a Symbol to Get Started</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Search for a stock symbol to view real-time price charts and trading volume.
+            </p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {['AAPL', 'TSLA', 'MSFT', 'QQQ', 'SPY', 'NVDA'].map(s => (
+                <button
+                  key={s}
+                  onClick={() => {
+                    setSymbol(s);
+                    setTimeout(() => handleSearch(), 100);
+                  }}
+                  className="px-3 py-1.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-colors"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
-          {chartData && (
-            <div className="flex gap-2 bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
-              <button
-                type="button"
-                onClick={() => {
-                  try {
-                    setChartType('line');
-                  } catch (error) {
-                    console.error('Error switching to line chart:', error);
-                  }
-                }}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  chartType === 'line'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
-              >
-                Line
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  try {
-                    // Only allow candlestick if we have valid candlestick data
-                    if (candlestickData && 
-                        candlestickData.datasets && 
-                        candlestickData.datasets[0] && 
-                        candlestickData.datasets[0].data && 
-                        candlestickData.datasets[0].data.length > 0) {
-                      // Additional validation before switching
-                      const firstPoint = candlestickData.datasets[0].data[0];
-                      if (firstPoint && 'o' in firstPoint && 'h' in firstPoint && 'l' in firstPoint && 'c' in firstPoint) {
-                        setChartType('candlestick');
-                      } else {
-                        console.warn('Candlestick data structure invalid, staying on line chart');
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3 flex-1 min-h-0 overflow-hidden">
+          {/* Price Chart Section */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col min-h-0" style={{ flex: '1 1 60%' }}>
+            <div className="px-3 py-2.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-between flex-shrink-0">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-1.5">
+                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                </svg>
+                Price Chart
+                {symbol && (
+                  <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-1">
+                    ({symbol.toUpperCase()})
+                  </span>
+                )}
+              </h2>
+              {chartData && (
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      try {
+                        setChartType('line');
+                      } catch (error) {
+                        console.error('Error switching to line chart:', error);
+                      }
+                    }}
+                    className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-all ${
+                      chartType === 'line'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    Line
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      try {
+                        if (candlestickData && 
+                            candlestickData.datasets && 
+                            candlestickData.datasets[0] && 
+                            candlestickData.datasets[0].data && 
+                            candlestickData.datasets[0].data.length > 0) {
+                          const firstPoint = candlestickData.datasets[0].data[0];
+                          if (firstPoint && 'o' in firstPoint && 'h' in firstPoint && 'l' in firstPoint && 'c' in firstPoint) {
+                            setChartType('candlestick');
+                          } else {
+                            console.warn('Candlestick data structure invalid, staying on line chart');
+                            setChartType('line');
+                          }
+                        } else {
+                          console.warn('Candlestick data not available, staying on line chart');
+                          setChartType('line');
+                        }
+                      } catch (error) {
+                        console.error('Error switching to candlestick chart:', error);
                         setChartType('line');
                       }
-                    } else {
-                      console.warn('Candlestick data not available, staying on line chart');
-                      setChartType('line');
-                    }
-                  } catch (error) {
-                    console.error('Error switching to candlestick chart:', error);
-                    // Always fallback to line chart on error
-                    setChartType('line');
-                  }
-                }}
-                disabled={!candlestickData || !candlestickData.datasets || !candlestickData.datasets[0] || !candlestickData.datasets[0].data || candlestickData.datasets[0].data.length === 0}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  chartType === 'candlestick'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                Candlestick
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="h-[500px] relative">
-          {chartData && chartData.labels && chartData.labels.length > 0 && chartData.datasets && chartData.datasets[0] && chartData.datasets[0].data && chartData.datasets[0].data.length > 0 ? (
-            <>
-              {loading && (
-                <div className="absolute inset-0 bg-white/90 dark:bg-gray-800/90 z-10 flex items-center justify-center backdrop-blur-sm">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-200 border-t-blue-600 mx-auto"></div>
-                  </div>
+                    }}
+                    disabled={!candlestickData || !candlestickData.datasets || !candlestickData.datasets[0] || !candlestickData.datasets[0].data || candlestickData.datasets[0].data.length === 0}
+                    className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-all ${
+                      chartType === 'candlestick'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    Candlestick
+                  </button>
                 </div>
               )}
-              <CandlestickChartWrapper
-                chartType={chartType}
-                candlestickData={candlestickData}
-                chartData={chartData}
-                symbol={symbol}
-                currentInterval={currentInterval}
-                lineChartOptions={lineChartOptions.current}
-                candlestickChartOptions={candlestickChartOptions.current}
-              />
-            </>
-          ) : loading ? (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600 mx-auto mb-4"></div>
-                <p className="text-gray-600 dark:text-gray-400 font-medium">Loading chart data...</p>
-                <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">Please wait</p>
+            </div>
+            <div className="p-2 flex-1 min-h-0">
+              <div className="w-full h-full relative">
+                {chartData && chartData.labels && chartData.labels.length > 0 && chartData.datasets && chartData.datasets[0] && chartData.datasets[0].data && chartData.datasets[0].data.length > 0 ? (
+                  <>
+                    {loading && (
+                      <div className="absolute inset-0 bg-white/90 dark:bg-gray-800/90 z-10 flex items-center justify-center backdrop-blur-sm rounded">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-200 border-t-blue-600 mx-auto"></div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Updating...</p>
+                        </div>
+                      </div>
+                    )}
+                    <CandlestickChartWrapper
+                      chartType={chartType}
+                      candlestickData={candlestickData}
+                      chartData={chartData}
+                      symbol={symbol}
+                      currentInterval={currentInterval}
+                      lineChartOptions={lineChartOptions.current}
+                      candlestickChartOptions={candlestickChartOptions.current}
+                    />
+                  </>
+                ) : loading ? (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600 mx-auto mb-4"></div>
+                      <p className="text-gray-600 dark:text-gray-400 font-medium text-sm">Loading chart data...</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">Please wait</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center">
+                      <svg className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 font-medium mb-1">No chart data available</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Please try searching again</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          </div>
+
+          {/* Volume Chart Section */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col min-h-0" style={{ flex: '1 1 40%' }}>
+            <div className="px-3 py-2.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex-shrink-0">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-1.5">
+                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
-                <p className="text-gray-600 dark:text-gray-400 font-medium mb-2">No chart data available</p>
-                <p className="text-sm text-gray-500 dark:text-gray-500">Please try searching again or check the symbol</p>
-              </div>
+                Trading Volume
+              </h2>
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* Volume Chart Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-200 dark:border-gray-700">
-        <div className="mb-4">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white">Trading Volume</h3>
-          {symbol && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {symbol.toUpperCase()} trading volume over time
-            </p>
-          )}
-        </div>
-        <div className="h-[350px] relative">
-          {volumeData && volumeData.labels && volumeData.labels.length > 0 ? (
-            <>
-              {loading && (
-                <div className="absolute inset-0 bg-white/80 dark:bg-gray-800/80 z-10 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-200 border-t-blue-600 mx-auto"></div>
+            <div className="p-2 flex-1 min-h-0">
+              <div className="w-full h-full relative">
+                {volumeData && volumeData.labels && volumeData.labels.length > 0 ? (
+                  <>
+                    {loading && (
+                      <div className="absolute inset-0 bg-white/80 dark:bg-gray-800/80 z-10 flex items-center justify-center backdrop-blur-sm rounded">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-200 border-t-blue-600 mx-auto"></div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Updating...</p>
+                        </div>
+                      </div>
+                    )}
+                    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                      <Bar
+                        data={volumeData}
+                        options={barChartOptions.current}
+                      />
+                    </div>
+                  </>
+                ) : loading ? (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-10 w-10 border-3 border-green-200 border-t-green-600 mx-auto mb-3"></div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Loading volume data...</p>
+                    </div>
                   </div>
-                </div>
-              )}
-              <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-                <Bar
-                  data={volumeData}
-                  options={barChartOptions.current}
-                />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center">
+                      <svg className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">No volume data available</p>
+                    </div>
+                  </div>
+                )}
               </div>
-            </>
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <p className="text-gray-500 dark:text-gray-400">No volume data available</p>
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
