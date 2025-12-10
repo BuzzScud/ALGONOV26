@@ -1,5 +1,6 @@
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import UserProfile from './UserProfile';
 import SidebarClock from './SidebarClock';
 
 // Common timezones for easy selection
@@ -291,6 +292,7 @@ function Sidebar({ isOpen, onClose }) {
               />
             </button>
           </div>
+          <UserProfile />
             </div>
           </div>
         </div>
