@@ -14,19 +14,27 @@ const getYahooFinanceUrl = (symbol, interval = '1d', range = '1d') => {
   return `https://api.allorigins.win/get?url=${encodeURIComponent(baseUrl)}`;
 };
 
+// Default Finnhub API key for production
+const DEFAULT_FINNHUB_KEY = 'd18ueuhr01qkcat4uip0d18ueuhr01qkcat4uipg';
+
 // Helper function to get API keys from localStorage
 const getApiKeys = () => {
   try {
     const saved = localStorage.getItem('apiKeys');
     if (saved) {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      // Merge with defaults, preferring saved values
+      return {
+        finnhub: parsed.finnhub || DEFAULT_FINNHUB_KEY,
+        massive: parsed.massive || 'qeBvdtjWjffA90rzgWB_HeHtmdpyuGQG',
+      };
     }
   } catch (error) {
     console.error('Error loading API keys from localStorage:', error);
   }
   // Default fallback keys
   return {
-    finnhub: 'demo',
+    finnhub: DEFAULT_FINNHUB_KEY,
     massive: 'qeBvdtjWjffA90rzgWB_HeHtmdpyuGQG',
   };
 };
