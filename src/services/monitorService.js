@@ -5,16 +5,28 @@
 // These are tested and working as of Dec 2024
 const CORS_PROXIES = [
   {
+    name: 'allorigins',
+    getUrl: (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    parseResponse: (data) => data,
+    headers: {},
+  },
+  {
     name: 'corsproxy.io',
     getUrl: (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
     parseResponse: (data) => data,
     headers: {},
   },
   {
-    name: 'cors-anywhere-heroku',
-    getUrl: (url) => `https://cors-anywhere.herokuapp.com/${url}`,
+    name: 'cors.sh',
+    getUrl: (url) => `https://cors.sh/${url}`,
     parseResponse: (data) => data,
-    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    headers: {},
+  },
+  {
+    name: 'crossorigin.me',
+    getUrl: (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+    parseResponse: (data) => data,
+    headers: {},
   },
   {
     name: 'thingproxy',
@@ -125,7 +137,7 @@ const fetchWithProxy = async (symbol, interval, range, proxyIndex, endpointIndex
   const proxy = CORS_PROXIES[proxyIndex % CORS_PROXIES.length];
   
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout per proxy
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout per proxy
   
   try {
     const headers = {
@@ -149,14 +161,21 @@ const fetchWithProxy = async (symbol, interval, range, proxyIndex, endpointIndex
     const contentType = response.headers.get('content-type') || '';
     let data;
     
-    if (contentType.includes('application/json')) {
-      data = await response.json();
-    } else {
-      // Try to parse as JSON anyway
-      const text = await response.text();
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
+    const text = await response.text();
+    
+    // Try to parse as JSON
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      // Some proxies wrap the response, try to extract JSON
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          data = JSON.parse(jsonMatch[0]);
+        } catch (e2) {
+          throw new Error('Response is not valid JSON');
+        }
+      } else {
         throw new Error('Response is not JSON');
       }
     }
@@ -325,6 +344,65 @@ export const fetchFinnhub = async (symbol) => {
     return result;
   } catch (error) {
     throw new Error(`Finnhub failed for ${symbol}: ${error.message}`);
+  }
+};
+
+// Fetch historical candle data from Finnhub (provides OHLC with timestamps)
+// This is a proper fallback for charts when Yahoo Finance fails
+export const fetchFinnhubCandles = async (symbol, resolution = 'D', fromDate = null, toDate = null) => {
+  const apiKeys = getApiKeys();
+  const apiKey = apiKeys.finnhub || DEFAULT_FINNHUB_KEY;
+  
+  // Map special symbols for Finnhub
+  let finnhubSymbol = symbol;
+  if (symbol === 'DX-Y.NYB' || symbol === 'DXY') {
+    finnhubSymbol = 'OANDA:EUR_USD';
+  } else if (symbol === '^VIX' || symbol === 'VIX') {
+    finnhubSymbol = 'SPY';
+  }
+  
+  // Calculate date range (default: last 30 days)
+  const now = Math.floor(Date.now() / 1000);
+  const from = fromDate || (now - 30 * 24 * 60 * 60); // 30 days ago
+  const to = toDate || now;
+  
+  // Check cache
+  const cacheKey = `finnhub_candles_${finnhubSymbol}_${resolution}_${from}_${to}`;
+  const cachedData = getCachedData(cacheKey);
+  if (cachedData) {
+    return cachedData;
+  }
+  
+  try {
+    const url = `https://finnhub.io/api/v1/stock/candle?symbol=${finnhubSymbol}&resolution=${resolution}&from=${from}&to=${to}&token=${apiKey}`;
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new Error(`Finnhub Candles HTTP ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // Finnhub returns { s: 'ok', c: [...], h: [...], l: [...], o: [...], t: [...], v: [...] }
+    if (!data || data.s !== 'ok' || !data.c || data.c.length === 0) {
+      throw new Error('No candle data available from Finnhub');
+    }
+    
+    const result = { data, source: 'finnhub_candles' };
+    setCachedData(cacheKey, result);
+    return result;
+  } catch (error) {
+    throw new Error(`Finnhub Candles failed for ${symbol}: ${error.message}`);
   }
 };
 
@@ -915,27 +993,143 @@ export const getMonitorChartData = async (id, type = 'response-time') => {
 
 // Get price chart data for Charts page
 export const getPriceChartData = async (symbol, interval = '1d') => {
+  // Map intervals to Yahoo Finance format
+  let yahooInterval = '1d';
+  let range = '1mo'; // 1 month for daily data
+  let finnhubResolution = 'D'; // Daily for Finnhub
+  
+  if (interval === '1H' || interval === '1h') {
+    yahooInterval = '1h';
+    range = '1d'; // 1 day for hourly data
+    finnhubResolution = '60'; // 60 minutes for Finnhub
+  } else if (interval === '1D' || interval === '1d') {
+    yahooInterval = '1d';
+    range = '1mo'; // 1 month for daily data
+    finnhubResolution = 'D';
+  }
+  
+  // Try Yahoo Finance first (via CORS proxies in production)
   try {
-    // Map intervals to Yahoo Finance format
-    let yahooInterval = '1d';
-    let range = '1mo'; // 1 month for daily data
+    const result = await fetchYahooFinance(symbol, yahooInterval, range);
     
-    if (interval === '1H' || interval === '1h') {
-      yahooInterval = '1h';
-      range = '1d'; // 1 day for hourly data
-    } else if (interval === '1D' || interval === '1d') {
-      yahooInterval = '1d';
-      range = '1mo'; // 1 month for daily data
+    if (result.source === 'yahoo') {
+      const data = result.data;
+      if (!data?.chart?.result?.[0]) {
+        throw new Error('Invalid data format from Yahoo Finance');
+      }
+      
+      const chartResult = data.chart.result[0];
+      const timestamps = chartResult.timestamp || [];
+      const quotes = chartResult.indicators?.quote?.[0];
+      
+      if (!quotes || timestamps.length === 0) {
+        throw new Error('No quote data available from Yahoo Finance');
+      }
+      
+      const closes = quotes.close || [];
+      const opens = quotes.open || [];
+      const highs = quotes.high || [];
+      const lows = quotes.low || [];
+      const volumes = quotes.volume || [];
+      
+      if (closes.length === 0) {
+        throw new Error('No historical data available');
+      }
+      
+      const meta = chartResult.meta;
+      const currentPrice = meta?.regularMarketPrice || meta?.previousClose || closes[closes.length - 1] || 0;
+      
+      const chartData = [];
+      const maxLength = Math.min(timestamps.length, closes.length);
+      
+      for (let i = 0; i < maxLength; i++) {
+        const timestamp = timestamps[i];
+        const close = closes[i];
+        
+        if (timestamp && close !== null && close !== undefined && !isNaN(close)) {
+          chartData.push({
+            time: new Date(timestamp * 1000).toISOString(),
+            timestamp: timestamp * 1000,
+            open: opens[i] !== null && opens[i] !== undefined ? opens[i] : close,
+            high: highs[i] !== null && highs[i] !== undefined ? highs[i] : close,
+            low: lows[i] !== null && lows[i] !== undefined ? lows[i] : close,
+            close: close,
+            volume: volumes[i] !== null && volumes[i] !== undefined ? volumes[i] : 0,
+          });
+        }
+      }
+      
+      if (chartData.length === 0) {
+        throw new Error('No valid price data points found');
+      }
+      
+      return {
+        symbol: symbol,
+        currentPrice: currentPrice,
+        data: chartData,
+      };
     }
+  } catch (yahooError) {
+    console.warn(`Yahoo Finance failed for ${symbol}, trying Finnhub candles:`, yahooError.message);
+  }
+  
+  // Fallback to Finnhub Candles API (supports CORS, provides historical data)
+  try {
+    const result = await fetchFinnhubCandles(symbol, finnhubResolution);
     
-    // prioritizeYahoo = true because we need historical data for charts
-    // Finnhub only provides current quote, not historical data
-    const result = await fetchMarketData(symbol, yahooInterval, range, true);
+    if (result.source === 'finnhub_candles') {
+      const data = result.data;
+      // Finnhub candles format: { s: 'ok', c: [...], h: [...], l: [...], o: [...], t: [...], v: [...] }
+      const closes = data.c || [];
+      const opens = data.o || [];
+      const highs = data.h || [];
+      const lows = data.l || [];
+      const timestamps = data.t || [];
+      const volumes = data.v || [];
+      
+      if (closes.length === 0) {
+        throw new Error('No candle data from Finnhub');
+      }
+      
+      const currentPrice = closes[closes.length - 1] || 0;
+      
+      const chartData = [];
+      for (let i = 0; i < closes.length; i++) {
+        const timestamp = timestamps[i];
+        const close = closes[i];
+        
+        if (timestamp && close !== null && close !== undefined && !isNaN(close)) {
+          chartData.push({
+            time: new Date(timestamp * 1000).toISOString(),
+            timestamp: timestamp * 1000,
+            open: opens[i] !== null && opens[i] !== undefined ? opens[i] : close,
+            high: highs[i] !== null && highs[i] !== undefined ? highs[i] : close,
+            low: lows[i] !== null && lows[i] !== undefined ? lows[i] : close,
+            close: close,
+            volume: volumes[i] !== null && volumes[i] !== undefined ? volumes[i] : 0,
+          });
+        }
+      }
+      
+      if (chartData.length === 0) {
+        throw new Error('No valid price data from Finnhub candles');
+      }
+      
+      return {
+        symbol: symbol,
+        currentPrice: currentPrice,
+        data: chartData,
+      };
+    }
+  } catch (finnhubError) {
+    console.warn(`Finnhub candles failed for ${symbol}:`, finnhubError.message);
+  }
+  
+  // Last resort: Try Finnhub quote API (single data point)
+  try {
+    const result = await fetchFinnhub(symbol);
     
-    // Only Yahoo Finance provides historical chart data
     if (result.source === 'finnhub') {
-      // For Finnhub, we can only get current quote, not historical
-      // Return minimal data with current price
       const finnhubData = result.data;
       return {
         symbol: symbol,
@@ -947,72 +1141,13 @@ export const getPriceChartData = async (symbol, interval = '1d') => {
           high: finnhubData.h || finnhubData.c || 0,
           low: finnhubData.l || finnhubData.c || 0,
           close: finnhubData.c || 0,
-          volume: finnhubData.v || 0,
+          volume: 0,
         }],
       };
     }
-    
-    const data = result.data;
-    if (!data?.chart?.result?.[0]) {
-      throw new Error('Invalid data format from API');
-    }
-    
-    const chartResult = data.chart.result[0];
-    const timestamps = chartResult.timestamp || [];
-    const quotes = chartResult.indicators?.quote?.[0];
-    
-    if (!quotes) {
-      throw new Error('No quote data available');
-    }
-    
-    const closes = quotes.close || [];
-    const opens = quotes.open || [];
-    const highs = quotes.high || [];
-    const lows = quotes.low || [];
-    const volumes = quotes.volume || [];
-    
-    // Validate we have data
-    if (timestamps.length === 0 || closes.length === 0) {
-      throw new Error('No historical data available for this symbol');
-    }
-    
-    // Get meta data for current price
-    const meta = chartResult.meta;
-    const currentPrice = meta?.regularMarketPrice || meta?.previousClose || closes[closes.length - 1] || 0;
-    
-    // Build data array, ensuring all arrays are aligned
-    const chartData = [];
-    const maxLength = Math.min(timestamps.length, closes.length);
-    
-    for (let i = 0; i < maxLength; i++) {
-      const timestamp = timestamps[i];
-      const close = closes[i];
-      
-      // Only include data points with valid timestamp and close price
-      if (timestamp && close !== null && close !== undefined && !isNaN(close)) {
-        chartData.push({
-          time: new Date(timestamp * 1000).toISOString(),
-          timestamp: timestamp * 1000,
-          open: opens[i] !== null && opens[i] !== undefined ? opens[i] : close,
-          high: highs[i] !== null && highs[i] !== undefined ? highs[i] : close,
-          low: lows[i] !== null && lows[i] !== undefined ? lows[i] : close,
-          close: close,
-          volume: volumes[i] !== null && volumes[i] !== undefined ? volumes[i] : 0,
-        });
-      }
-    }
-    
-    if (chartData.length === 0) {
-      throw new Error('No valid price data points found');
-    }
-    
-    return {
-      symbol: symbol,
-      currentPrice: currentPrice,
-      data: chartData,
-    };
-  } catch (error) {
-    console.error('Failed to fetch price chart data:', error);
-    throw error;
+  } catch (quoteError) {
+    console.error(`All APIs failed for ${symbol}:`, quoteError.message);
   }
+  
+  throw new Error(`Failed to fetch chart data for ${symbol}. Please try again later.`);
 };
