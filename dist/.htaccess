@@ -1,73 +1,15 @@
-# Apache configuration for React SPA - Serves from dist/ subdirectory
-# Web root is project root, built files are in dist/
-
-# Set default document
-DirectoryIndex dist/index.html index.html
-
-# Disable directory listing
+# Allow all files in dist/ to be served directly
 Options -Indexes
 
-# MIME types
-<IfModule mod_mime.c>
-  AddType application/javascript .js
-  AddType text/css .css
-  AddCharset UTF-8 .js
-  AddCharset UTF-8 .css
-</IfModule>
-
-# Headers
-<IfModule mod_headers.c>
-  <FilesMatch "\.js$">
-    Header set Content-Type "application/javascript; charset=UTF-8"
-  </FilesMatch>
-  <FilesMatch "\.css$">
-    Header set Content-Type "text/css; charset=UTF-8"
-  </FilesMatch>
-  Header set X-Content-Type-Options "nosniff"
-  Header set X-Frame-Options "SAMEORIGIN"
-  Header set X-XSS-Protection "1; mode=block"
-</IfModule>
-
-# Rewrite rules - serve everything from dist/
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  RewriteBase /trading/
   
-  # Block access to source files - return 403 Forbidden
-  RewriteRule ^src/ - [F,L]
-  RewriteRule \.jsx$ - [F,L]
-  RewriteRule ^node_modules/ - [F,L]
-  RewriteRule ^package\.json$ - [F,L]
-  RewriteRule ^vite\.config\.js$ - [F,L]
+  # Serve existing files directly
+  RewriteCond %{REQUEST_FILENAME} -f
+  RewriteRule ^ - [L]
   
-  # If request is for root, serve dist/index.html
-  RewriteRule ^$ dist/index.html [L]
-  
-  # If file exists in dist/, serve it
-  RewriteCond %{REQUEST_URI} !^/trading/dist/
-  RewriteCond %{DOCUMENT_ROOT}/trading/dist%{REQUEST_URI} -f
-  RewriteRule ^(.*)$ dist/$1 [L]
-  
-  # For assets folder, redirect to dist/assets
-  RewriteRule ^assets/(.*)$ dist/assets/$1 [L]
-  
-  # For all other requests, serve dist/index.html (SPA routing)
+  # SPA fallback
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule ^ dist/index.html [L]
-</IfModule>
-
-# Compression
-<IfModule mod_deflate.c>
-  AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript application/json
-</IfModule>
-
-# Caching
-<IfModule mod_expires.c>
-  ExpiresActive On
-  ExpiresByType text/css "access plus 1 year"
-  ExpiresByType application/javascript "access plus 1 year"
-  ExpiresByType image/png "access plus 1 year"
-  ExpiresByType image/jpeg "access plus 1 year"
-  ExpiresByType image/svg+xml "access plus 1 year"
+  RewriteRule ^ index.html [L]
 </IfModule>
